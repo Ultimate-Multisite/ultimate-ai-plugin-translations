@@ -1,0 +1,32 @@
+{
+	"name": "ultimate-multisite/ultimate-ai-plugin-translations",
+	"description": "Automatically provides AI-generated translations for WordPress plugins when official translations are missing or incomplete.",
+	"type": "wordpress-plugin",
+	"license": "GPL-2.0-or-later",
+	"authors": [
+		{
+			"name": "Ultimate Multisite Community",
+			"homepage": "https://ultimatemultisite.com"
+		}
+	],
+	"require": {
+		"php": ">=8.0"
+	},
+	"config": {
+		"platform": {
+			"php": "8.2.0"
+		},
+		"preferred-install": "dist",
+		"sort-packages": true
+	},
+	"autoload": {
+		"psr-4": {
+			"GratisAIPluginTranslations\\": "src/"
+		}
+	},
+	"homepage": "https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations",
+	"support": {
+		"issues": "https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations/issues",
+		"source": "https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations"
+	}
+}
