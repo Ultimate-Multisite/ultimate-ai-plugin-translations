@@ -78,8 +78,8 @@ class Translation_Manager {
         // Hook into translation API to provide AI translations.
         add_filter('translations_api', [$this, 'filter_translations_api'], 20, 3);
 
-        // Hook into language pack upgrade process.
-        add_filter('upgrader_pre_download', [$this, 'maybe_download_ai_translation'], 10, 4);
+        // Note: no upgrader_pre_download hook needed — Traduttore serves static
+        // zip files that WordPress's Language_Pack_Upgrader downloads natively.
 
         // Add status indicators to update core page.
         add_action('admin_notices', [$this, 'display_translation_status_on_update_page']);

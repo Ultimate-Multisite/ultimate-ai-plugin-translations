@@ -54,16 +54,17 @@ class Translation_API_Client {
     }
 
     /**
-     * Check for available translations on the API server.
+     * Check for available translations via Traduttore's GlotPress API.
      *
-     * This method queries the server to see if AI translations are
-     * already generated for a specific plugin and locales.
+     * Queries the Traduttore translation API on the translate server to see
+     * which locales have built language packs. Returns only the locales
+     * the caller requested.
      *
-     * @since 1.0.0
+     * @since 1.1.0
      * @param string $textdomain    Plugin textdomain.
-     * @param string $version       Plugin version.
+     * @param string $version       Plugin version (unused — Traduttore returns all sets).
      * @param array  $locales       Array of locale codes to check.
-     * @return array|WP_Error       Array of available translations or WP_Error.
+     * @return array|WP_Error       Locale-keyed array of available translations or WP_Error.
      */
     public function check_translations(string $textdomain, string $version, array $locales) {
         if (empty($locales)) {
@@ -71,30 +72,26 @@ class Translation_API_Client {
         }
 
         // Check cache first.
-        $cache_key = 'gratis_ai_pt_check_' . md5($textdomain . $version . implode(',', $locales));
+        $cache_key = 'gratis_ai_pt_check_' . md5($textdomain . implode(',', $locales));
         $cached = get_site_transient($cache_key);
 
         if (false !== $cached) {
             return $cached;
         }
 
-        $endpoint = $this->api_base . '/check-translations';
+        // Query Traduttore's GlotPress API route.
+        // Project path follows GlotPress convention: plugins/{textdomain}
+        $translate_host = wp_parse_url($this->api_base, PHP_URL_SCHEME) . '://'
+            . wp_parse_url($this->api_base, PHP_URL_HOST);
+        $endpoint = $translate_host . '/api/translations/plugins/' . $textdomain;
 
-        $response = wp_remote_post(
+        $response = wp_remote_get(
             $endpoint,
             [
-                'timeout'   => $this->timeout,
-                'headers'   => [
-                    'Content-Type' => 'application/json',
-                    'Accept'       => 'application/json',
+                'timeout' => $this->timeout,
+                'headers' => [
+                    'Accept' => 'application/json',
                 ],
-                'body'      => wp_json_encode([
-                    'textdomain' => $textdomain,
-                    'version'    => $version,
-                    'locales'    => $locales,
-                    'site_url'   => get_site_url(),
-                    'wp_version' => get_bloginfo('version'),
-                ]),
             ]
         );
 
@@ -103,6 +100,11 @@ class Translation_API_Client {
         }
 
         $status_code = wp_remote_retrieve_response_code($response);
+
+        if ($status_code === 404) {
+            // Project doesn't exist yet in GlotPress — no translations available.
+            return [];
+        }
 
         if ($status_code !== 200) {
             return new \WP_Error(
@@ -118,17 +120,32 @@ class Translation_API_Client {
         $body = wp_remote_retrieve_body($response);
         $data = json_decode($body, true);
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
+        if (json_last_error() !== JSON_ERROR_NONE || !isset($data['translations'])) {
             return new \WP_Error(
                 'json_error',
                 __('Failed to parse API response', 'gratis-ai-plugin-translations')
             );
         }
 
-        // Cache the result.
-        set_site_transient($cache_key, $data, $this->cache_duration);
+        // Transform Traduttore's array into a locale-keyed map,
+        // filtering to only the locales the caller requested.
+        $result = [];
+        $locales_flip = array_flip($locales);
 
-        return $data;
+        foreach ($data['translations'] as $translation) {
+            $lang = $translation['language'] ?? '';
+            if (isset($locales_flip[$lang])) {
+                $result[$lang] = [
+                    'package_url' => $translation['package'],
+                    'updated'     => $translation['updated'] ?? '',
+                ];
+            }
+        }
+
+        // Cache the result.
+        set_site_transient($cache_key, $result, $this->cache_duration);
+
+        return $result;
     }
 
     /**
@@ -260,41 +277,6 @@ class Translation_API_Client {
         set_site_transient($cache_key, $data, MINUTE_IN_SECONDS * 5);
 
         return $data;
-    }
-
-    /**
-     * Download a translation package.
-     *
-     * @since 1.0.0
-     * @param string $package_url URL to the translation package.
-     * @return string|WP_Error    Path to downloaded file or WP_Error.
-     */
-    public function download_translation_package(string $package_url) {
-        if (!wp_http_validate_url($package_url)) {
-            return new \WP_Error(
-                'invalid_url',
-                __('Invalid translation package URL', 'gratis-ai-plugin-translations')
-            );
-        }
-
-        // Verify the URL is from our trusted domain.
-        $parsed_url = wp_parse_url($package_url);
-        $parsed_base = wp_parse_url($this->api_base);
-
-        if ($parsed_url['host'] !== $parsed_base['host']) {
-            return new \WP_Error(
-                'untrusted_source',
-                __('Translation package URL is from an untrusted source', 'gratis-ai-plugin-translations')
-            );
-        }
-
-        $download_file = download_url($package_url, 300);
-
-        if (is_wp_error($download_file)) {
-            return $download_file;
-        }
-
-        return $download_file;
     }
 
     /**
