@@ -123,31 +123,38 @@ class CLI {
         \WP_CLI::log("Version: {$version}");
         \WP_CLI::log("Locale: {$locale}");
 
-        $translations = $this->api_client->check_translations($textdomain, $version, [$locale]);
+        $response = $this->api_client->batch_check_translations(
+            [['textdomain' => $textdomain, 'version' => $version]],
+            [$locale]
+        );
 
-        if (is_wp_error($translations)) {
-            \WP_CLI::warning($translations->get_error_message());
-
-            // Request translation generation.
-            \WP_CLI::log('Requesting translation generation...');
-            $result = $this->api_client->request_translation_generation($textdomain, $version, [$locale]);
-
-            if (is_wp_error($result)) {
-                \WP_CLI::error($result->get_error_message());
-                return;
-            }
-
-            \WP_CLI::success('Translation generation requested. It will be processed soon.');
+        if (is_wp_error($response)) {
+            \WP_CLI::error($response->get_error_message());
             return;
         }
 
-        if (isset($translations[$locale])) {
+        $entry = $response['results'][$textdomain][$locale] ?? null;
+        if ($entry && !empty($entry['package_url'])) {
             \WP_CLI::success("AI translation is available for {$locale}");
-            \WP_CLI::log("Package URL: {$translations[$locale]['package_url']}");
-            \WP_CLI::log("Updated: {$translations[$locale]['updated']}");
-        } else {
-            \WP_CLI::warning("No AI translation available for {$locale}");
+            \WP_CLI::log("Package URL: {$entry['package_url']}");
+            \WP_CLI::log('Updated: ' . ($entry['updated'] ?? 'unknown'));
+            return;
         }
+
+        if ($entry && isset($entry['status'])) {
+            \WP_CLI::log("Translation status: {$entry['status']}");
+            if (isset($entry['queue_position'])) {
+                \WP_CLI::log("Queue position: {$entry['queue_position']}");
+            }
+            return;
+        }
+
+        if (!empty($response['queued'])) {
+            \WP_CLI::success("Translation generation queued for {$locale}.");
+            return;
+        }
+
+        \WP_CLI::warning("No AI translation available for {$locale}");
     }
 
     /**
@@ -197,14 +204,18 @@ class CLI {
         \WP_CLI::log("Version: {$version}");
         \WP_CLI::log("Locales: " . implode(', ', $locales));
 
-        $result = $this->api_client->request_translation_generation($textdomain, $version, $locales);
+        $response = $this->api_client->batch_check_translations(
+            [['textdomain' => $textdomain, 'version' => $version]],
+            $locales
+        );
 
-        if (is_wp_error($result)) {
-            \WP_CLI::error($result->get_error_message());
+        if (is_wp_error($response)) {
+            \WP_CLI::error($response->get_error_message());
             return;
         }
 
-        \WP_CLI::success('Translation generation requested successfully');
+        $queued = count($response['queued'] ?? []);
+        \WP_CLI::success(sprintf('Translation generation requested (%d locale(s) queued).', $queued));
     }
 
     /**

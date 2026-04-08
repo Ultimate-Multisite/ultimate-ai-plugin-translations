@@ -103,21 +103,17 @@ add_action('plugins_loaded', __NAMESPACE__ . '\\init', 20);
 /**
  * Activation hook.
  *
+ * Schedules an immediate async cache refresh so translation generation
+ * starts right away instead of waiting for WordPress's next update-check
+ * cycle (~12h). The handler is registered by Translation_Manager::init()
+ * on plugins_loaded.
+ *
  * @return void
  */
 function activate(): void
 {
-    // Set default options.
-    if (get_site_option('gratis_ai_pt_enabled') === false) {
-        add_site_option('gratis_ai_pt_enabled', true);
-    }
-
-    if (get_site_option('gratis_ai_pt_fill_incomplete') === false) {
-        add_site_option('gratis_ai_pt_fill_incomplete', true);
-    }
-
-    if (get_site_option('gratis_ai_pt_cache_duration') === false) {
-        add_site_option('gratis_ai_pt_cache_duration', 3600); // 1 hour.
+    if (!wp_next_scheduled('gratis_ai_pt_refresh_cache')) {
+        wp_schedule_single_event(time() + 5, 'gratis_ai_pt_refresh_cache');
     }
 }
 
