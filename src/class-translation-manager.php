@@ -81,9 +81,6 @@ class Translation_Manager {
         // Note: no upgrader_pre_download hook needed — Traduttore serves static
         // zip files that WordPress's Language_Pack_Upgrader downloads natively.
 
-        // Add status indicators to update core page.
-        add_action('admin_notices', [$this, 'display_translation_status_on_update_page']);
-
         // Schedule cleanup of old translation files.
         add_action('gratis_ai_pt_cleanup_old_translations', [$this, 'cleanup_old_translations']);
 
@@ -113,51 +110,212 @@ class Translation_Manager {
             return $transient;
         }
 
-        // Get all installed plugins.
+        // Use cached results from the async cron job. NEVER make HTTP calls
+        // synchronously here — this hook fires inside admin page loads and
+        // would block update-core.php for minutes (504s) on sites with many
+        // plugins. The cron handler (gratis_ai_pt_refresh_cache) populates
+        // this cache; if missing, schedule it and return the transient as-is.
+        $cached = get_site_transient('gratis_ai_pt_translations_cache');
+
+        if (false === $cached) {
+            if (!wp_next_scheduled('gratis_ai_pt_refresh_cache')) {
+                wp_schedule_single_event(time() + 5, 'gratis_ai_pt_refresh_cache');
+            }
+            return $transient;
+        }
+
+        if (!is_array($cached) || empty($cached)) {
+            return $transient;
+        }
+
+        foreach ($cached as $entry) {
+            if (!isset($transient->translations)) {
+                $transient->translations = [];
+            }
+            $transient->translations[] = $entry;
+        }
+
+        return $transient;
+    }
+
+    /**
+     * Refresh the translations cache (cron handler).
+     *
+     * Performs the slow per-plugin API/network work off the request path
+     * and stores the resulting list of translation entries in a transient
+     * for inject_translation_updates() to consume.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    public function refresh_translations_cache(): void {
+        if (!$this->is_enabled()) {
+            return;
+        }
+
         if (!function_exists('get_plugins')) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
         }
-        $plugins = get_plugins();
+        $plugins = array_keys(get_plugins());
+        sort($plugins);
 
-            foreach ($plugins as $plugin_file => $plugin_data) {
+        // Resume from prior chunk state, or start fresh.
+        $state = get_site_option('gratis_ai_pt_refresh_state', null);
+        $is_resume = is_array($state)
+            && isset($state['plugins'], $state['offset'])
+            && $state['plugins'] === $plugins;
+
+        if (!$is_resume) {
+            $state = [
+                'plugins'    => $plugins,
+                'offset'     => 0,
+                'entries'    => [],
+                'pending'    => 0,
+                'started_at' => current_time('mysql'),
+            ];
+        }
+
+        /**
+         * Filter the chunk size for the refresh cron.
+         *
+         * Each cron event processes this many plugins, then reschedules
+         * itself if more remain. Keep low enough that one batch finishes
+         * well under PHP's max_execution_time.
+         *
+         * @since 1.2.0
+         * @param int $chunk_size Default 25.
+         */
+        $chunk_size = (int) apply_filters('gratis_ai_pt_refresh_chunk_size', 25);
+        $chunk_size = max(1, min(100, $chunk_size));
+
+        $slice = array_slice($plugins, $state['offset'], $chunk_size);
+        if (empty($slice)) {
+            $this->finalize_refresh($state);
+            return;
+        }
+
+        $this->process_refresh_chunk($slice, $state);
+
+        $state['offset'] += count($slice);
+        if ($state['offset'] >= count($plugins)) {
+            $this->finalize_refresh($state);
+            return;
+        }
+
+        // More work to do — persist state and reschedule the next chunk.
+        update_site_option('gratis_ai_pt_refresh_state', $state);
+        wp_schedule_single_event(time() + 1, 'gratis_ai_pt_refresh_cache');
+    }
+
+    /**
+     * Process one chunk of plugins via the batch endpoint.
+     *
+     * @since 1.2.0
+     * @param array $plugin_files Plugin file paths to process this chunk.
+     * @param array &$state        Refresh state (entries / pending mutated).
+     * @return void
+     */
+    private function process_refresh_chunk(array $plugin_files, array &$state): void {
+        $all_plugins = get_plugins();
+        $installed   = wp_get_installed_translations('plugins');
+        $available   = $this->get_available_translations_map();
+
+        // Build the per-chunk request: textdomain → {version, slug, file}.
+        // Track every locale needed across the chunk so we can send a single
+        // request with the union of locales.
+        $batch        = [];   // textdomain => ['textdomain'=>..., 'version'=>...]
+        $needed_map   = [];   // textdomain => locales[]
+        $slug_map     = [];   // textdomain => slug
+        $version_map  = [];   // textdomain => version
+        $locale_union = [];
+
+        foreach ($plugin_files as $plugin_file) {
+            $plugin_data = $all_plugins[$plugin_file] ?? null;
+            if (!$plugin_data) {
+                continue;
+            }
             $textdomain = $this->get_plugin_textdomain((string) $plugin_file, $plugin_data);
-            $needed_translations = $this->get_needed_translations($textdomain);
-
-            if (empty($needed_translations)) {
+            $needed     = $this->get_needed_translations($textdomain, $installed, $available);
+            if (empty($needed)) {
                 continue;
             }
 
-            // Check API for available AI translations.
-            $ai_translations = $this->api_client->check_translations($textdomain, $plugin_data['Version'] ?? '1.0.0', $needed_translations);
+            $version = $plugin_data['Version'] ?? '1.0.0';
+            $slug    = dirname((string) $plugin_file) ?: sanitize_title((string) $plugin_file);
 
-            if (empty($ai_translations) || is_wp_error($ai_translations)) {
-                // If translations aren't available yet, trigger generation.
-                $this->api_client->request_translation_generation($textdomain, $plugin_data['Version'] ?? '1.0.0', $needed_translations);
+            $batch[$textdomain]       = ['textdomain' => $textdomain, 'version' => $version];
+            $needed_map[$textdomain]  = $needed;
+            $slug_map[$textdomain]    = $slug;
+            $version_map[$textdomain] = $version;
+            $locale_union             = array_merge($locale_union, $needed);
+        }
+
+        if (empty($batch)) {
+            return;
+        }
+
+        $locale_union = array_values(array_unique($locale_union));
+        $response = $this->api_client->batch_check_translations(array_values($batch), $locale_union);
+
+        if (is_wp_error($response)) {
+            // Soft-fail: count everything as pending so the user sees activity.
+            foreach ($needed_map as $td => $locales) {
+                $state['pending'] += count($locales);
+            }
+            return;
+        }
+
+        $results = $response['results'] ?? [];
+        $queued  = $response['queued'] ?? [];
+        $state['pending'] += count($queued);
+
+        foreach ($results as $textdomain => $by_locale) {
+            if (!isset($needed_map[$textdomain])) {
                 continue;
             }
-
-            // Add translation packages to the transient.
-            foreach ($ai_translations as $locale => $translation_data) {
-                if (!isset($transient->translations)) {
-                    $transient->translations = [];
+            foreach ($by_locale as $locale => $entry) {
+                // Only count locales the client actually wants for this plugin.
+                if (!in_array($locale, $needed_map[$textdomain], true)) {
+                    continue;
                 }
-
-                $plugin_file_str = (string) $plugin_file;
-                $slug = dirname($plugin_file_str) ?: sanitize_title($plugin_file_str);
-                $transient->translations[] = [
+                if (empty($entry['package_url'])) {
+                    continue;
+                }
+                $state['entries'][] = [
                     'type'       => 'plugin',
-                    'slug'       => (string) $slug,
+                    'slug'       => $slug_map[$textdomain],
                     'language'   => $locale,
-                    'version'    => $plugin_data['Version'] ?? '1.0.0',
-                    'updated'    => $translation_data['updated'] ?? current_time('mysql'),
-                    'package'    => $translation_data['package_url'],
+                    'version'    => $version_map[$textdomain],
+                    'updated'    => $entry['updated'] ?? current_time('mysql'),
+                    'package'    => $entry['package_url'],
                     'autoupdate' => true,
                     'source'     => 'gratis-ai',
                 ];
             }
         }
+    }
 
-        return $transient;
+    /**
+     * Persist final cache + stats and clear the chunk state.
+     *
+     * @since 1.2.0
+     * @param array $state Completed refresh state.
+     * @return void
+     */
+    private function finalize_refresh(array $state): void {
+        $entries = $state['entries'] ?? [];
+        $pending = (int) ($state['pending'] ?? 0);
+        $checked = count($state['plugins'] ?? []);
+
+        set_site_transient('gratis_ai_pt_translations_cache', $entries, 6 * HOUR_IN_SECONDS);
+
+        update_site_option('gratis_ai_pt_last_check', current_time('mysql'));
+        update_site_option('gratis_ai_pt_plugins_checked', $checked);
+        update_site_option('gratis_ai_pt_pending_count', $pending);
+        update_site_option('gratis_ai_pt_available_count', count($entries));
+        set_site_transient('gratis_ai_pt_pending_count', $pending, DAY_IN_SECONDS);
+
+        delete_site_option('gratis_ai_pt_refresh_state');
     }
 
     /**
@@ -170,7 +328,7 @@ class Translation_Manager {
      * @return array|bool Modified result.
      */
     public function filter_translations_api($result, string $type, $args) {
-        if ($type !== 'plugins') {
+        if ($type !== 'plugins' || !$this->is_enabled()) {
             return $result;
         }
 
@@ -178,51 +336,31 @@ class Translation_Manager {
             $result = [];
         }
 
-        if (!$this->is_enabled()) {
+        // Serve from the cache populated by refresh_translations_cache().
+        // Never make sync API calls on this hook — it fires during admin
+        // requests and would block. If the cache is empty, schedule a
+        // refresh and return whatever we have.
+        $cached = get_site_transient('gratis_ai_pt_translations_cache');
+        if (false === $cached) {
+            if (!wp_next_scheduled('gratis_ai_pt_refresh_cache')) {
+                wp_schedule_single_event(time() + 5, 'gratis_ai_pt_refresh_cache');
+            }
+            return $result;
+        }
+        if (!is_array($cached) || empty($cached)) {
             return $result;
         }
 
-        // Process each plugin to check for AI translations.
-        if (!empty($args->slugs)) {
-            foreach ($args->slugs as $slug) {
-                $plugin_file = $this->get_plugin_file_from_slug($slug);
-                if (!$plugin_file) {
-                    continue;
-                }
+        $wanted_slugs = !empty($args->slugs) ? (array) $args->slugs : null;
 
-                $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_file);
-                $textdomain = $this->get_plugin_textdomain($plugin_file, $plugin_data);
-                $needed_translations = $this->get_needed_translations($textdomain);
-
-                if (empty($needed_translations)) {
-                    continue;
-                }
-
-                // Get AI translations from API.
-                $ai_translations = $this->api_client->check_translations(
-                    $textdomain,
-                    $plugin_data['Version'] ?? '1.0.0',
-                    $needed_translations
-                );
-
-                if (!empty($ai_translations) && !is_wp_error($ai_translations)) {
-                    foreach ($ai_translations as $locale => $translation_data) {
-                        if (!isset($result['translations'])) {
-                            $result['translations'] = [];
-                        }
-
-                        $result['translations'][] = [
-                            'type'       => 'plugin',
-                            'slug'       => $slug,
-                            'language'   => $locale,
-                            'version'    => $plugin_data['Version'] ?? '1.0.0',
-                            'updated'    => $translation_data['updated'] ?? current_time('mysql'),
-                            'package'    => $translation_data['package_url'],
-                            'autoupdate' => true,
-                        ];
-                    }
-                }
+        foreach ($cached as $entry) {
+            if ($wanted_slugs !== null && !in_array($entry['slug'] ?? '', $wanted_slugs, true)) {
+                continue;
             }
+            if (!isset($result['translations'])) {
+                $result['translations'] = [];
+            }
+            $result['translations'][] = $entry;
         }
 
         return $result;
@@ -320,21 +458,29 @@ class Translation_Manager {
      *
      * @since 1.0.0
      * @param string $textdomain Plugin textdomain.
+     * @param array  $installed  Optional pre-fetched wp_get_installed_translations('plugins').
+     * @param array  $available  Optional pre-built [textdomain => [locale => true]] map.
      * @return array Array of locale codes that need AI translations.
      */
-    private function get_needed_translations(string $textdomain): array {
+    private function get_needed_translations(string $textdomain, array $installed = [], array $available = []): array {
         // Get site languages (for multisite) or just the site locale.
-        $needed_locales = [];
-        $site_locale = get_locale();
+        $needed_locales = [get_locale()];
+
+        // Include all user-profile locales (users can override site language).
+        global $wpdb;
+        $user_locales = $wpdb->get_col(
+            "SELECT DISTINCT meta_value FROM {$wpdb->usermeta} WHERE meta_key = 'locale' AND meta_value != ''"
+        );
+        if (!empty($user_locales)) {
+            $needed_locales = array_merge($needed_locales, $user_locales);
+        }
 
         if (is_multisite()) {
-            // Get all unique locales from all sites.
-            global $wpdb;
-            $locales = $wpdb->get_col("SELECT meta_value FROM {$wpdb->sitemeta} WHERE meta_key = 'WPLANG'");
-            $needed_locales = array_filter(array_unique(array_merge([$site_locale], $locales)));
-        } else {
-            $needed_locales = [$site_locale];
+            $site_locales = $wpdb->get_col("SELECT meta_value FROM {$wpdb->sitemeta} WHERE meta_key = 'WPLANG'");
+            $needed_locales = array_merge($needed_locales, $site_locales);
         }
+
+        $needed_locales = array_filter(array_unique($needed_locales));
 
         if (empty($needed_locales)) {
             $needed_locales = ['en_US'];
@@ -343,14 +489,24 @@ class Translation_Manager {
         // Filter out English (no translation needed).
         $needed_locales = array_diff($needed_locales, ['en_US', 'en']);
 
-        // Check installed translations.
-        $installed_translations = wp_get_installed_translations('plugins');
+        // Use prefetched maps when supplied (chunked refresh path); otherwise
+        // fetch them lazily for ad-hoc callers.
+        $installed_translations = !empty($installed) ? $installed : wp_get_installed_translations('plugins');
+        if (empty($available)) {
+            $available = $this->get_available_translations_map();
+        }
         $needed = [];
-        $fill_incomplete = get_site_option('gratis_ai_pt_fill_incomplete', true);
+        /**
+         * Filter whether to fill gaps in incomplete official translations.
+         *
+         * @since 1.0.0
+         * @param bool $fill_incomplete Default true.
+         */
+        $fill_incomplete = (bool) apply_filters('gratis_ai_pt_fill_incomplete', true);
 
         foreach ($needed_locales as $locale) {
             // Check if we have official translations from wordpress.org.
-            $has_official = $this->has_official_translation($textdomain, $locale);
+            $has_official = $this->has_official_translation($textdomain, $locale, $installed_translations, $available);
 
             if (!$has_official) {
                 // No official translation, AI translation needed.
@@ -369,52 +525,64 @@ class Translation_Manager {
     }
 
     /**
-     * Check if a plugin has an official translation on wordpress.org.
+     * Check if a plugin has an official translation, using only WP's caches.
      *
-     * @since 1.0.0
+     * Never calls api.wordpress.org. Two sources:
+     *
+     * 1. wp_get_installed_translations('plugins') — translations already
+     *    on disk. If installed, it's official.
+     * 2. The 'update_plugins' site transient — populated by WP's normal
+     *    update-check cycle, contains a `translations` array of available
+     *    plugin translation updates from wp.org.
+     *
+     * Anything not in either cache is treated as missing → AI fills the
+     * gap. WordPress will overwrite our AI .mo if/when wp.org publishes
+     * an official one (core's Language_Pack_Upgrader runs after ours).
+     *
+     * @since 1.2.0
      * @param string $textdomain Plugin textdomain.
      * @param string $locale     Locale code.
-     * @return bool True if official translation exists.
+     * @param array  $installed  Pre-fetched wp_get_installed_translations('plugins').
+     * @param array  $available  Pre-built [textdomain => [locale => true]] map.
+     * @return bool True if WordPress already knows of an official translation.
      */
-    private function has_official_translation(string $textdomain, string $locale): bool {
-        // Check cache first.
-        $cache_key = 'gratis_ai_pt_official_' . md5($textdomain . $locale);
-        $cached = get_site_transient($cache_key);
-
-        if (false !== $cached) {
-            return (bool) $cached;
+    private function has_official_translation(
+        string $textdomain,
+        string $locale,
+        array $installed = [],
+        array $available = []
+    ): bool {
+        if (isset($installed[$textdomain][$locale])) {
+            return true;
         }
 
-        // Query wordpress.org translation API.
-        $url = sprintf(
-            'https://api.wordpress.org/translations/plugins/1.0/?slug=%s',
-            urlencode($textdomain)
-        );
-
-        $response = wp_remote_get($url, ['timeout' => 10]);
-
-        if (is_wp_error($response)) {
-            set_site_transient($cache_key, false, HOUR_IN_SECONDS);
-            return false;
+        if (isset($available[$textdomain][$locale])) {
+            return true;
         }
 
-        $body = wp_remote_retrieve_body($response);
-        $data = json_decode($body, true);
-
-        if (empty($data['translations'])) {
-            set_site_transient($cache_key, false, HOUR_IN_SECONDS);
-            return false;
-        }
-
-        foreach ($data['translations'] as $translation) {
-            if ($translation['language'] === $locale) {
-                set_site_transient($cache_key, true, HOUR_IN_SECONDS);
-                return true;
-            }
-        }
-
-        set_site_transient($cache_key, false, HOUR_IN_SECONDS);
         return false;
+    }
+
+    /**
+     * Build a [textdomain => [locale => true]] map from the update_plugins
+     * transient's translations array. Cheap; runs once per refresh batch.
+     *
+     * @since 1.2.0
+     * @return array
+     */
+    private function get_available_translations_map(): array {
+        $map = [];
+        $transient = get_site_transient('update_plugins');
+        if (!is_object($transient) || empty($transient->translations)) {
+            return $map;
+        }
+        foreach ($transient->translations as $entry) {
+            if (empty($entry['slug']) || empty($entry['language'])) {
+                continue;
+            }
+            $map[(string) $entry['slug']][(string) $entry['language']] = true;
+        }
+        return $map;
     }
 
     /**
@@ -449,7 +617,94 @@ class Translation_Manager {
      * @return bool True if enabled.
      */
     private function is_enabled(): bool {
-        return (bool) get_site_option('gratis_ai_pt_enabled', true);
+        /**
+         * Filter whether the plugin is enabled.
+         *
+         * Allows site owners to disable via code (e.g. a mu-plugin) without
+         * a settings page. Default: true.
+         *
+         * @since 1.0.0
+         * @param bool $enabled Default true.
+         */
+        return (bool) apply_filters('gratis_ai_pt_enabled', true);
+    }
+
+    /**
+     * Schedule async translation request after profile change.
+     *
+     * Defers the slow API/network work to wp-cron so the profile save
+     * request stays fast. Cron fires within seconds on the next page load.
+     *
+     * @since 1.0.0
+     * @param int $user_id User ID.
+     * @return void
+     */
+    public function schedule_translation_request_for_user(int $user_id): void {
+        if (!$this->is_enabled()) {
+            return;
+        }
+        $locale = get_user_meta($user_id, 'locale', true);
+        if (empty($locale) || in_array($locale, ['en_US', 'en', 'site-default'], true)) {
+            return;
+        }
+        if (!wp_next_scheduled('gratis_ai_pt_request_user_locale', [$user_id])) {
+            wp_schedule_single_event(time() + 5, 'gratis_ai_pt_request_user_locale', [$user_id]);
+        }
+    }
+
+    /**
+     * Request AI translations after a user profile change.
+     *
+     * Fires when a user updates their profile (including the language
+     * preference). Detects new locales and immediately asks the API
+     * to generate translations for all installed plugins.
+     *
+     * @since 1.0.0
+     * @param int $user_id User ID.
+     * @return void
+     */
+    public function maybe_request_translations_for_user(int $user_id): void {
+        if (!$this->is_enabled()) {
+            return;
+        }
+
+        $locale = get_user_meta($user_id, 'locale', true);
+        if (empty($locale) || in_array($locale, ['en_US', 'en', 'site-default'], true)) {
+            return;
+        }
+
+        // De-dupe: only fire once per locale per day.
+        $marker = 'gratis_ai_pt_user_locale_' . md5($locale);
+        if (get_site_transient($marker)) {
+            return;
+        }
+        set_site_transient($marker, 1, DAY_IN_SECONDS);
+
+        if (!function_exists('get_plugins')) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        $installed = wp_get_installed_translations('plugins');
+        $available = $this->get_available_translations_map();
+
+        // Build one batch request for every plugin missing this locale.
+        $batch = [];
+        foreach (get_plugins() as $plugin_file => $plugin_data) {
+            $textdomain = $this->get_plugin_textdomain((string) $plugin_file, $plugin_data);
+            if ($this->has_official_translation($textdomain, $locale, $installed, $available)) {
+                continue;
+            }
+            $batch[] = [
+                'textdomain' => $textdomain,
+                'version'    => $plugin_data['Version'] ?? '1.0.0',
+            ];
+        }
+
+        if (empty($batch)) {
+            return;
+        }
+
+        // Single batched call — server auto-queues missing locales.
+        $this->api_client->batch_check_translations($batch, [$locale]);
     }
 
     /**
@@ -484,77 +739,4 @@ class Translation_Manager {
         }
     }
 
-    /**
-     * Display translation status on update core page.
-     *
-     * @since 1.0.0
-     * @return void
-     */
-    public function display_translation_status_on_update_page(): void {
-        // Only show on update-core.php.
-        $screen = get_current_screen();
-        if (!$screen || $screen->id !== 'update-core') {
-            return;
-        }
-
-        // Check if plugin is enabled.
-        if (!$this->is_enabled()) {
-            return;
-        }
-
-        // Get pending translations count.
-        $pending_count = get_site_transient('gratis_ai_pt_pending_count');
-        $completed_count = get_site_transient('gratis_ai_pt_completed_today');
-
-        if (!$pending_count && !$completed_count) {
-            return;
-        }
-
-        echo '<div class="notice notice-info inline">';
-        echo '<p><strong>' . esc_html__('AI Plugin Translations', 'gratis-ai-plugin-translations') . '</strong></p>';
-        
-        if ($pending_count > 0) {
-            echo '<p>';
-            printf(
-                /* translators: %d: Number of pending translations */
-                esc_html(
-                    sprintf(
-                        _n(
-                            'Currently requesting %s AI translation.',
-                            'Currently requesting %s AI translations.',
-                            $pending_count,
-                            'gratis-ai-plugin-translations'
-                        ),
-                        number_format_i18n($pending_count)
-                    )
-                )
-            );
-            echo '</p>';
-        }
-
-        if ($completed_count > 0) {
-            echo '<p>';
-            printf(
-                /* translators: %d: Number of completed translations */
-                esc_html(
-                    sprintf(
-                        _n(
-                            '%s AI translation completed today.',
-                            '%s AI translations completed today.',
-                            $completed_count,
-                            'gratis-ai-plugin-translations'
-                        ),
-                        number_format_i18n($completed_count)
-                    )
-                )
-            );
-            echo '</p>';
-        }
-
-        echo '<p><small>';
-        esc_html_e('AI translations fill gaps when official translations from wordpress.org are missing or incomplete.', 'gratis-ai-plugin-translations');
-        echo '</small></p>';
-        
-        echo '</div>';
-    }
 }
