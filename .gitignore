@@ -17,3 +17,5 @@
 .DS_Store
 Thumbs.db
 .agents/loop-state/
+
+.aidevops.json
