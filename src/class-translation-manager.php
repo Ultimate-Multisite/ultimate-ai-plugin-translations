@@ -81,12 +81,23 @@ class Translation_Manager {
         // Note: no upgrader_pre_download hook needed — Traduttore serves static
         // zip files that WordPress's Language_Pack_Upgrader downloads natively.
 
+        // Cron handler for the async cache refresh (scheduled by activate() and
+        // on cache-miss). Must be registered before any wp_schedule_single_event()
+        // call for this hook so the event always has a handler.
+        add_action('gratis_ai_pt_refresh_cache', [$this, 'refresh_translations_cache']);
+
         // Schedule cleanup of old translation files.
         add_action('gratis_ai_pt_cleanup_old_translations', [$this, 'cleanup_old_translations']);
 
         if (!wp_next_scheduled('gratis_ai_pt_cleanup_old_translations')) {
             wp_schedule_event(time(), 'weekly', 'gratis_ai_pt_cleanup_old_translations');
         }
+
+        // User-locale hook: when a user saves their profile with a different
+        // language, schedule an async translation request for that locale.
+        add_action('profile_update', [$this, 'schedule_translation_request_for_user']);
+        add_action('user_register', [$this, 'schedule_translation_request_for_user']);
+        add_action('gratis_ai_pt_request_user_locale', [$this, 'maybe_request_translations_for_user']);
     }
 
     /**
@@ -235,13 +246,22 @@ class Translation_Manager {
                 continue;
             }
             $textdomain = $this->get_plugin_textdomain((string) $plugin_file, $plugin_data);
-            $needed     = $this->get_needed_translations($textdomain, $installed, $available);
+
+            // Compute slug before get_needed_translations() so it can be passed
+            // to has_official_translation() for the slug-keyed $available map.
+            $slug = dirname((string) $plugin_file);
+            if ('.' === $slug || '' === $slug) {
+                // Single-file plugin (e.g. hello.php) — dirname returns '.'.
+                // Derive slug from the filename without extension.
+                $slug = sanitize_title(basename((string) $plugin_file, '.php'));
+            }
+
+            $needed = $this->get_needed_translations($textdomain, $slug, $installed, $available);
             if (empty($needed)) {
                 continue;
             }
 
             $version = $plugin_data['Version'] ?? '1.0.0';
-            $slug    = dirname((string) $plugin_file) ?: sanitize_title((string) $plugin_file);
 
             $batch[$textdomain]       = ['textdomain' => $textdomain, 'version' => $version];
             $needed_map[$textdomain]  = $needed;
@@ -298,6 +318,13 @@ class Translation_Manager {
     /**
      * Persist final cache + stats and clear the chunk state.
      *
+     * The translations cache is only written when the refresh is fully
+     * complete (pending === 0). While translations are still being generated
+     * on the server, we update the stats counters so the status page stays
+     * accurate, but we leave the existing cache in place rather than
+     * replacing it with an incomplete snapshot that would cause already-available
+     * packages to disappear until the next successful full refresh.
+     *
      * @since 1.2.0
      * @param array $state Completed refresh state.
      * @return void
@@ -307,7 +334,19 @@ class Translation_Manager {
         $pending = (int) ($state['pending'] ?? 0);
         $checked = count($state['plugins'] ?? []);
 
-        set_site_transient('gratis_ai_pt_translations_cache', $entries, 6 * HOUR_IN_SECONDS);
+        // Only cache the translation list when there are no server-side pending
+        // items. If the server queued work, leave the existing cache intact so
+        // plugins with package_url from a previous run remain visible.
+        if (0 === $pending) {
+            /**
+             * Filter the cache duration (seconds) for the translations result set.
+             *
+             * @since 1.2.0
+             * @param int $seconds Default 1 hour.
+             */
+            $cache_duration = (int) apply_filters('gratis_ai_pt_cache_duration', HOUR_IN_SECONDS);
+            set_site_transient('gratis_ai_pt_translations_cache', $entries, $cache_duration);
+        }
 
         update_site_option('gratis_ai_pt_last_check', current_time('mysql'));
         update_site_option('gratis_ai_pt_plugins_checked', $checked);
@@ -457,12 +496,13 @@ class Translation_Manager {
      * 3. Whether to fill incomplete translations
      *
      * @since 1.0.0
-     * @param string $textdomain Plugin textdomain.
+     * @param string $textdomain Plugin textdomain (keys installed-translations map).
+     * @param string $slug       Plugin slug / folder name (keys available-translations map).
      * @param array  $installed  Optional pre-fetched wp_get_installed_translations('plugins').
-     * @param array  $available  Optional pre-built [textdomain => [locale => true]] map.
+     * @param array  $available  Optional pre-built [slug => [locale => true]] map.
      * @return array Array of locale codes that need AI translations.
      */
-    private function get_needed_translations(string $textdomain, array $installed = [], array $available = []): array {
+    private function get_needed_translations(string $textdomain, string $slug = '', array $installed = [], array $available = []): array {
         // Get site languages (for multisite) or just the site locale.
         $needed_locales = [get_locale()];
 
@@ -506,7 +546,9 @@ class Translation_Manager {
 
         foreach ($needed_locales as $locale) {
             // Check if we have official translations from wordpress.org.
-            $has_official = $this->has_official_translation($textdomain, $locale, $installed_translations, $available);
+            // Pass both textdomain (for installed map) and slug (for available
+            // map from update_plugins transient, which is keyed by plugin slug).
+            $has_official = $this->has_official_translation($textdomain, $slug, $locale, $installed_translations, $available);
 
             if (!$has_official) {
                 // No official translation, AI translation needed.
@@ -530,34 +572,43 @@ class Translation_Manager {
      * Never calls api.wordpress.org. Two sources:
      *
      * 1. wp_get_installed_translations('plugins') — translations already
-     *    on disk. If installed, it's official.
+     *    on disk, keyed by textdomain. If installed, it's official.
      * 2. The 'update_plugins' site transient — populated by WP's normal
      *    update-check cycle, contains a `translations` array of available
-     *    plugin translation updates from wp.org.
+     *    plugin translation updates from wp.org, keyed by plugin slug.
      *
      * Anything not in either cache is treated as missing → AI fills the
      * gap. WordPress will overwrite our AI .mo if/when wp.org publishes
      * an official one (core's Language_Pack_Upgrader runs after ours).
      *
      * @since 1.2.0
-     * @param string $textdomain Plugin textdomain.
+     * @param string $textdomain Plugin textdomain (keys the installed-translations map).
+     * @param string $slug       Plugin slug / folder name (keys the available map from
+     *                           update_plugins transient). Pass '' when unknown.
      * @param string $locale     Locale code.
      * @param array  $installed  Pre-fetched wp_get_installed_translations('plugins').
-     * @param array  $available  Pre-built [textdomain => [locale => true]] map.
+     * @param array  $available  Pre-built [slug => [locale => true]] map.
      * @return bool True if WordPress already knows of an official translation.
      */
     private function has_official_translation(
         string $textdomain,
+        string $slug,
         string $locale,
         array $installed = [],
         array $available = []
     ): bool {
+        // Installed translations on disk are indexed by textdomain.
         if (isset($installed[$textdomain][$locale])) {
             return true;
         }
 
-        if (isset($available[$textdomain][$locale])) {
-            return true;
+        // Available translations from wp.org (update_plugins transient) are
+        // indexed by plugin slug, which may differ from textdomain.
+        $lookup_keys = array_filter(array_unique([$slug, $textdomain]));
+        foreach ($lookup_keys as $key) {
+            if (isset($available[$key][$locale])) {
+                return true;
+            }
         }
 
         return false;
@@ -690,7 +741,11 @@ class Translation_Manager {
         $batch = [];
         foreach (get_plugins() as $plugin_file => $plugin_data) {
             $textdomain = $this->get_plugin_textdomain((string) $plugin_file, $plugin_data);
-            if ($this->has_official_translation($textdomain, $locale, $installed, $available)) {
+            $slug       = dirname((string) $plugin_file);
+            if ('.' === $slug || '' === $slug) {
+                $slug = sanitize_title(basename((string) $plugin_file, '.php'));
+            }
+            if ($this->has_official_translation($textdomain, $slug, $locale, $installed, $available)) {
                 continue;
             }
             $batch[] = [

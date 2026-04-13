@@ -313,7 +313,7 @@ class Admin_Settings {
 
             <div class="card" style="max-width: 800px; margin-top: 20px;">
                 <h2><?php esc_html_e('Privacy Notice', 'gratis-ai-plugin-translations'); ?></h2>
-                <p><?php esc_html_e('This plugin sends plugin metadata (name, version, textdomain) to the translation server to generate translations. No personal data or site content is transmitted. Translations are cached on your server.', 'gratis-ai-plugin-translations'); ?></p>
+                <p><?php esc_html_e('This plugin sends the following data to the translation server for each refresh request: plugin metadata (name, version, textdomain), the site URL, and the WordPress version. No personal data or site content is transmitted. Translations are cached on your server.', 'gratis-ai-plugin-translations'); ?></p>
             </div>
 
             <div class="card" style="max-width: 800px; margin-top: 20px;">
