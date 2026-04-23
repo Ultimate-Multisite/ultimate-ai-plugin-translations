@@ -68,21 +68,21 @@ class Translation_API_Client {
     /**
      * Batch check + auto-queue translations for many plugins in one call.
      *
-     * Replaces N calls to check_translations() + N calls to
-     * request_translation_generation() with a single round trip.
+     * Note: auto_approve defaults to false - all requests require server-side
+     * approval before processing begins. Set auto_approve: true to bypass.
      *
      * @since 1.2.0
      * @param array $plugins Array of ['textdomain' => string, 'version' => string].
      * @param array $locales Locales to query for every plugin.
      * @return array|\WP_Error {
      *     'results' => textdomain-keyed map of locale-keyed translation entries,
-     *     'queued'  => list of newly-queued [textdomain, locale] pairs,
-     *     'queue_length' => server queue length,
+     *     'requested'  => list of [textdomain, locale] pairs waiting for approval,
+     *     'queue_length' => server pending queue length,
      * }
      */
     public function batch_check_translations(array $plugins, array $locales) {
         if (empty($plugins) || empty($locales)) {
-            return ['results' => [], 'queued' => [], 'queue_length' => 0];
+            return ['results' => [], 'requested' => [], 'queue_length' => 0];
         }
 
         $endpoint = $this->api_base . '/batch-check-translations';
@@ -98,7 +98,7 @@ class Translation_API_Client {
                 'body'      => wp_json_encode([
                     'plugins'    => array_values($plugins),
                     'locales'    => array_values($locales),
-                    'auto_queue' => true,
+                    'auto_approve' => false,  // Default: require approval
                     'site_url'   => get_site_url(),
                     'wp_version' => get_bloginfo('version'),
                 ]),
@@ -128,7 +128,7 @@ class Translation_API_Client {
 
         return [
             'results'      => $body['results'] ?? [],
-            'queued'       => $body['queued'] ?? [],
+            'requested'    => $body['requested'] ?? [],
             'queue_length' => (int) ($body['queue_length'] ?? 0),
         ];
     }
