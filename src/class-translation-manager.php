@@ -263,7 +263,11 @@ class Translation_Manager {
 
             $version = $plugin_data['Version'] ?? '1.0.0';
 
-            $batch[$textdomain]       = ['textdomain' => $textdomain, 'version' => $version];
+            $batch[$textdomain]       = [
+                'textdomain' => $textdomain,
+                'version'    => $version,
+                'source'     => $this->is_wporg_plugin($slug) ? 'wporg' : 'premium',
+            ];
             $needed_map[$textdomain]  = $needed;
             $slug_map[$textdomain]    = $slug;
             $version_map[$textdomain] = $version;
@@ -621,6 +625,47 @@ class Translation_Manager {
      * @since 1.2.0
      * @return array
      */
+    /**
+     * Check if a plugin slug is from the WordPress.org repository.
+     *
+     * Plugins in the update_plugins transient's response or no_update
+     * arrays are from wp.org. Everything else is premium/custom.
+     *
+     * @since 1.1.0
+     * @param string $slug Plugin slug.
+     * @return bool True if the plugin is from wp.org.
+     */
+    private function is_wporg_plugin(string $slug): bool {
+        static $wporg_slugs = null;
+
+        if (null === $wporg_slugs) {
+            $wporg_slugs = [];
+            $transient = get_site_transient('update_plugins');
+            if (is_object($transient)) {
+                // Plugins with available updates.
+                if (!empty($transient->response)) {
+                    foreach ($transient->response as $file => $data) {
+                        $s = is_object($data) ? ($data->slug ?? '') : ($data['slug'] ?? '');
+                        if ($s) {
+                            $wporg_slugs[$s] = true;
+                        }
+                    }
+                }
+                // Plugins that are up to date.
+                if (!empty($transient->no_update)) {
+                    foreach ($transient->no_update as $file => $data) {
+                        $s = is_object($data) ? ($data->slug ?? '') : ($data['slug'] ?? '');
+                        if ($s) {
+                            $wporg_slugs[$s] = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        return isset($wporg_slugs[$slug]);
+    }
+
     private function get_available_translations_map(): array {
         $map = [];
         $transient = get_site_transient('update_plugins');
