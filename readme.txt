@@ -112,12 +112,17 @@ The plugin is free. The translation service is currently offered at no cost whil
 
 == Changelog ==
 
-= 1.0.0 =
-* Initial release
-* Automatic AI translation downloads
-* Smart filtering for missing/incomplete translations
-* WP-CLI support
-* Multisite support
+= 1.0.0 - 2026-04-23 =
+* New: Automatic AI translation downloads for plugins missing official translations
+* New: Smart filtering — parses .po files to detect genuinely incomplete translations, not just missing ones
+* New: Detect WordPress.org vs premium plugins; source is included in batch requests to the server
+* New: Chunked, batched translation refresh to handle large plugin lists without timeouts
+* New: Rich admin status page with per-plugin and per-locale translation counts
+* New: "Check for updates now" button that forces a fresh WordPress update check before triggering an AI refresh
+* New: Default auto_approve=false — AI translations wait for server-side approval before downloading
+* New: Allow downloads from translation server on private-IP/local networks (development environments)
+* New: WP-CLI support (`wp gratis-ai-translations`)
+* New: Full multisite support with network-admin settings page
 
 == Upgrade Notice ==
 
