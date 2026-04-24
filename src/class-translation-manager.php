@@ -78,6 +78,11 @@ class Translation_Manager {
         // Hook into translation API to provide AI translations.
         add_filter('translations_api', [$this, 'filter_translations_api'], 20, 3);
 
+        // Allow WordPress to download packages from the translation server
+        // even when it resolves to a private/reserved IP (e.g. local dev).
+        // WordPress's SSRF protection blocks private IPs by default.
+        add_filter('http_request_host_is_external', [$this, 'allow_translation_server_host'], 10, 2);
+
         // Note: no upgrader_pre_download hook needed — Traduttore serves static
         // zip files that WordPress's Language_Pack_Upgrader downloads natively.
 
@@ -760,6 +765,34 @@ class Translation_Manager {
         }
 
         return (int) round(($translated / $total) * 100);
+    }
+
+    /**
+     * Allow WordPress to download from the translation server's host.
+     *
+     * WordPress's SSRF protection blocks HTTP requests to private/reserved
+     * IPs. In development environments where the translation server resolves
+     * to a LAN address, this filter marks the server's hostname as external
+     * so download_url() and wp_safe_remote_get() succeed.
+     *
+     * In production this is a no-op since the server resolves to a public IP.
+     *
+     * @since 1.2.0
+     * @param bool   $is_external Whether the host is external.
+     * @param string $host        The hostname being checked.
+     * @return bool True if the host matches the translation server.
+     */
+    public function allow_translation_server_host( bool $is_external, string $host ): bool {
+        if ( $is_external ) {
+            return true;
+        }
+
+        $server_host = wp_parse_url( GRATIS_AI_PT_API_BASE, PHP_URL_HOST );
+        if ( $host === $server_host ) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
