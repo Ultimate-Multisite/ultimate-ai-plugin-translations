@@ -684,26 +684,82 @@ class Translation_Manager {
     /**
      * Get translation completeness percentage.
      *
+     * When a .po file is installed locally, parses it to count how many
+     * strings have non-empty translations. WordPress's installed-translations
+     * metadata does NOT include a completeness field, so without reading
+     * the actual .po file the code would always assume 100% — silently
+     * skipping plugins with partial official translations.
+     *
      * @since 1.0.0
      * @param string $textdomain           Plugin textdomain.
      * @param string $locale               Locale code.
      * @param array  $installed_translations Installed translations data.
-     * @return int Completeness percentage.
+     * @return int Completeness percentage (0-100).
      */
     private function get_translation_completeness(string $textdomain, string $locale, array $installed_translations): int {
         if (!isset($installed_translations[$textdomain][$locale])) {
             return 0;
         }
 
-        $translation_data = $installed_translations[$textdomain][$locale];
+        // Try to determine actual completeness by parsing the .po file.
+        $po_file = WP_LANG_DIR . '/plugins/' . $textdomain . '-' . $locale . '.po';
 
-        // If we have completeness info, use it.
-        if (isset($translation_data['completeness'])) {
-            return (int) $translation_data['completeness'];
+        if (file_exists($po_file)) {
+            return $this->count_po_completeness($po_file);
         }
 
-        // Default to assuming it's complete if it exists.
-        return 100;
+        // .mo exists but .po is missing (can happen after manual cleanup).
+        // Can't verify completeness — assume incomplete so fill_incomplete
+        // can send it to the server for gap-filling.
+        return 99;
+    }
+
+    /**
+     * Count translation completeness by parsing a .po file.
+     *
+     * Reads the .po file and counts msgid/msgstr pairs. A msgid with a
+     * non-empty msgstr (or at least one non-empty msgstr[] for plurals)
+     * is counted as translated. The PO header entry (empty msgid) is
+     * excluded from the count.
+     *
+     * @since 1.2.0
+     * @param string $po_file Absolute path to the .po file.
+     * @return int Completeness percentage (0-100).
+     */
+    private function count_po_completeness(string $po_file): int {
+        // Use WP's PO parser for reliable multi-line & plural handling.
+        if (!class_exists('PO')) {
+            require_once ABSPATH . WPINC . '/pomo/po.php';
+        }
+
+        $po = new \PO();
+        if (!$po->import_from_file($po_file)) {
+            return 0;
+        }
+
+        $total      = 0;
+        $translated = 0;
+
+        foreach ($po->entries as $entry) {
+            // Skip fuzzy entries in the count — they aren't served to users.
+            if (!empty($entry->flags) && in_array('fuzzy', $entry->flags, true)) {
+                $total++;
+                continue;
+            }
+
+            $total++;
+
+            // Check if at least the first translation form is non-empty.
+            if (!empty($entry->translations[0])) {
+                $translated++;
+            }
+        }
+
+        if ($total === 0) {
+            return 100; // Empty PO = nothing to translate.
+        }
+
+        return (int) round(($translated / $total) * 100);
     }
 
     /**
