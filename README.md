@@ -1,5 +1,7 @@
 # Gratis AI Plugin Translations
 
+[![Download Plugin Now](https://img.shields.io/github/v/release/Ultimate-Multisite/ultimate-ai-plugin-translations?style=for-the-badge&label=Download+Plugin+Now&color=0073aa)](https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations/releases/latest/download/ultimate-ai-plugin-translations.zip) &nbsp; Upload the zip to WordPress like any other plugin
+
 A WordPress plugin that automatically provides AI-generated translations for WordPress plugins when official translations from translate.wordpress.org are missing or incomplete.
 
 ## Overview
