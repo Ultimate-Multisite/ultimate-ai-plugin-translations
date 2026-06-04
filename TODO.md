@@ -80,9 +80,10 @@ Format: `- [ ] tNNN Description @owner #tag ~estimate risk:level logged:date`
 
 ## Done
 
-<!--TOON:done[2]{id,desc,owner,tags,est,actual,logged,started,completed,status}:
+<!--TOON:done[3]{id,desc,owner,tags,est,actual,logged,started,completed,status}:
 - t001 Document supervisor dashboard refresh recovery @superdav42 #ops #dashboard ~15m actual:15m logged:2026-05-31 started:2026-05-31 completed:2026-05-31 status:done
 - t002 Document dashboard stale root cause for GH#20 @superdav42 #ops #dashboard ~15m actual:15m logged:2026-06-02 started:2026-06-02 completed:2026-06-02 status:done
+- t003 Document dashboard stale root cause for GH#22 @superdav42 #ops #dashboard ~15m actual:15m logged:2026-06-04 started:2026-06-04 completed:2026-06-04 status:done
 -->
 
 ## Declined
@@ -101,5 +102,5 @@ Format: `- [ ] tNNN Description @owner #tag ~estimate risk:level logged:date`
 <!--/TOON:subtasks-->
 
 <!--TOON:summary{total,ready,pending,in_progress,in_review,done,declined,total_est,total_actual}:
-2,0,0,0,0,2,0,30m,30m
+3,0,0,0,0,3,0,45m,45m
 -->
