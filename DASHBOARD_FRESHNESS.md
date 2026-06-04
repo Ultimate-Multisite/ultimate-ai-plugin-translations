@@ -54,3 +54,33 @@ previous timestamp, while the stats wrapper was healthy and the repo had no
 active queue work to report. Treat this as a false-positive stale-dashboard
 alert unless `stats.log` lacks recent `[stats-wrapper] Finished` entries or the
 issue body no longer contains `last_refresh:`.
+
+## Issue #28 triage evidence
+
+Issue #28 repeated the same legacy queue-dashboard freshness alert. Triage on
+2026-06-04 showed the scheduler was installed and continuing to refresh managed
+repo health surfaces: `~/.aidevops/logs/stats.log` contained hourly starts and
+finishes through 2026-06-04T18:49:15Z, followed by a 2026-06-04T19:35:20Z run
+that refreshed the queue dashboard before a later stale-process cleanup.
+
+```text
+[stats-wrapper] Finished at 2026-06-04T18:49:15Z
+[stats-wrapper] Starting at 2026-06-04T19:35:20Z
+[stats] Health issue: skipping creation for Ultimate-Multisite/ultimate-multisite-support-tickets — no active PRs, assigned issues, auto-dispatch work, or workers
+[stats-wrapper] Killing stale stats process 1561986 (803s)
+```
+
+Dashboard issue #8 was also fresh during triage and retained the required body
+marker:
+
+```text
+issue #8 updated_at=2026-06-04T19:42:06Z
+last_refresh: 2026-06-04T19:41:08Z
+has_last_refresh=true
+```
+
+Root cause: issue #28 was generated from an earlier stale timestamp on the
+legacy queue dashboard, but a subsequent stats-wrapper run refreshed issue #8
+within the acceptance window. The scheduler was not missing; the alert should be
+treated as resolved when issue #8 remains under 24 hours old and contains the
+`last_refresh:` marker.
