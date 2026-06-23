@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Gratis AI Plugin Translations
+ * Plugin Name: Superdav AI Translations
  * Plugin URI: https://translate.ultimatemultisite.com
  * Description: Automatically provides AI-generated translations for WordPress plugins when official translations are missing or incomplete from translate.wordpress.org.
  * Version: 1.0.0
@@ -10,8 +10,7 @@
  * Author URI: https://ultimatemultisite.com
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: gratis-ai-plugin-translations
- * Domain Path: /languages
+ * Text Domain: superdav-ai-translations
  * Network: true
  *
  * @package GratisAIPluginTranslations
@@ -70,7 +69,8 @@ function init(): void
             <div class="notice notice-error">
                 <p><?php
                     printf(
-                        esc_html__('Gratis AI Plugin Translations requires PHP 8.0 or higher. You are running PHP %s.', 'gratis-ai-plugin-translations'),
+                        /* translators: %s: Current PHP version. */
+                        esc_html__('Superdav AI Translations requires PHP 8.0 or higher. You are running PHP %s.', 'superdav-ai-translations'),
                         esc_html(PHP_VERSION)
                     );
                 ?></p>
@@ -80,13 +80,6 @@ function init(): void
         return;
     }
 
-    // Load translations.
-    load_plugin_textdomain(
-        'gratis-ai-plugin-translations',
-        false,
-        dirname(GRATIS_AI_PT_BASENAME) . '/languages/'
-    );
-
     // Initialize components.
     Translation_Manager::instance()->init();
     Admin_Settings::instance()->init();
@@ -94,7 +87,7 @@ function init(): void
     // WP-CLI commands.
     if (defined('WP_CLI') && WP_CLI) {
         require_once GRATIS_AI_PT_DIR . 'src/class-cli.php';
-        \WP_CLI::add_command('gratis-ai-translations', CLI::class);
+        \WP_CLI::add_command('superdav-ai-translations', CLI::class);
     }
 }
 
@@ -126,13 +119,31 @@ register_activation_hook(GRATIS_AI_PT_FILE, __NAMESPACE__ . '\\activate');
  */
 function deactivate(): void
 {
-    // Clear transients.
-    global $wpdb;
-    $wpdb->query("DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE '%_transient_gratis_ai_pt_%'");
-    $wpdb->query("DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE '%_transient_timeout_gratis_ai_pt_%'");
+    // Clear known transients.
+    delete_site_transient('gratis_ai_pt_translations_cache');
+    delete_site_transient('gratis_ai_pt_pending_count');
+    delete_site_transient('gratis_ai_pt_api_status');
+
+    $cache_keys = get_site_option('gratis_ai_pt_cache_keys', []);
+    if (is_array($cache_keys)) {
+        foreach ($cache_keys as $cache_key) {
+            if (is_string($cache_key) && 0 === strpos($cache_key, 'gratis_ai_pt_')) {
+                delete_site_transient($cache_key);
+            }
+        }
+    }
 
     // Clean up options that aren't needed.
+    delete_site_option('gratis_ai_pt_cache_keys');
     delete_site_option('gratis_ai_pt_api_status');
+    delete_site_option('gratis_ai_pt_refresh_state');
+    delete_site_option('gratis_ai_pt_last_check');
+    delete_site_option('gratis_ai_pt_plugins_checked');
+    delete_site_option('gratis_ai_pt_pending_count');
+    delete_site_option('gratis_ai_pt_available_count');
+
+    wp_clear_scheduled_hook('gratis_ai_pt_refresh_cache');
+    wp_clear_scheduled_hook('gratis_ai_pt_cleanup_old_translations');
 }
 
 register_deactivation_hook(GRATIS_AI_PT_FILE, __NAMESPACE__ . '\\deactivate');

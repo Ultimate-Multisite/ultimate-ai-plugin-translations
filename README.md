@@ -1,4 +1,4 @@
-# Gratis AI Plugin Translations
+# Superdav AI Translations
 
 [![Download Plugin Now](https://img.shields.io/github/v/release/Ultimate-Multisite/ultimate-ai-plugin-translations?style=for-the-badge&label=Download+Plugin+Now&color=0073aa)](https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations/releases/latest/download/ultimate-ai-plugin-translations.zip) &nbsp; Upload the zip to WordPress like any other plugin
 
@@ -12,7 +12,7 @@ The official WordPress translation platform (translate.wordpress.org) relies on 
 - Plugins with incomplete translations
 - Plugins that haven't been fully translated by volunteers
 
-**Gratis AI Plugin Translations** bridges this gap by providing AI-powered translations that are:
+**Superdav AI Translations** bridges this gap by providing AI-powered translations that are:
 
 - Automatically downloaded when needed
 - Generated on-demand using advanced language models
@@ -47,7 +47,7 @@ The official WordPress translation platform (translate.wordpress.org) relies on 
 ### Install via Composer
 
 ```bash
-composer require ultimatemultisite/gratis-ai-plugin-translations
+composer require ultimatemultisite/superdav-ai-translations
 ```
 
 ### For Multisite
@@ -83,25 +83,25 @@ The plugin provides several WP-CLI commands for management:
 
 ```bash
 # Check API status
-wp gratis-ai-translations status
+wp superdav-ai-translations status
 
 # Check translations for a specific plugin
-wp gratis-ai-translations check woocommerce
+wp superdav-ai-translations check woocommerce
 
 # Request translation for specific locale
-wp gratis-ai-translations check woocommerce --locale=es_ES
+wp superdav-ai-translations check woocommerce --locale=es_ES
 
 # Request translation generation
-wp gratis-ai-translations request woocommerce --locale=de_DE
+wp superdav-ai-translations request woocommerce --locale=de_DE
 
 # List all AI translations
-wp gratis-ai-translations list
+wp superdav-ai-translations list
 
 # Clear translation cache
-wp gratis-ai-translations clear-cache
+wp superdav-ai-translations clear-cache
 
 # Get translation status
-wp gratis-ai-translations status-plugin woocommerce de_DE
+wp superdav-ai-translations status-plugin woocommerce de_DE
 ```
 
 ## Architecture
@@ -115,9 +115,9 @@ wp gratis-ai-translations status-plugin woocommerce de_DE
 
 ### Hooks Used
 
-- `pre_set_site_transient_update_plugins`: Inject AI translation updates
 - `translations_api`: Filter translation API results
-- `upgrader_pre_download`: Handle AI translation package downloads
+- `gratis_ai_pt_refresh_cache`: Refresh and install AI translation packages asynchronously
+- `http_request_host_is_external`: Allow downloads from the configured translation server host
 
 ### Translation Priority
 
@@ -146,8 +146,8 @@ The translation server (`translate.ultimatemultisite.com`) uses:
 ### File Structure
 
 ```
-gratis-ai-plugin-translations/
-├── gratis-ai-plugin-translations.php  # Main plugin file
+superdav-ai-translations/
+├── superdav-ai-translations.php       # Main plugin file
 ├── src/
 │   ├── class-translation-manager.php  # Core translation logic
 │   ├── class-translation-api-client.php  # API communication
@@ -177,7 +177,7 @@ gratis-ai-plugin-translations/
 
 Clear the translation cache:
 ```bash
-wp gratis-ai-translations clear-cache
+wp superdav-ai-translations clear-cache
 ```
 
 Or delete transients manually:

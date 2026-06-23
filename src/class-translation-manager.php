@@ -72,9 +72,6 @@ class Translation_Manager {
      * @return void
      */
     public function init(): void {
-        // Hook into plugin update check to provide translation info.
-        add_filter('pre_set_site_transient_update_plugins', [$this, 'inject_translation_updates'], 20, 1);
-
         // Hook into translation API to provide AI translations.
         add_filter('translations_api', [$this, 'filter_translations_api'], 20, 3);
 
@@ -106,60 +103,11 @@ class Translation_Manager {
     }
 
     /**
-     * Inject AI translation updates into plugin update transient.
-     *
-     * This hook fires when WordPress checks for plugin updates.
-     * We check if any installed plugins need AI translations and
-     * add them to the transient.
-     *
-     * @since 1.0.0
-     * @param object|bool $transient The update_plugins transient value.
-     * @return object|bool Modified transient.
-     */
-    public function inject_translation_updates($transient) {
-        if (!is_object($transient)) {
-            return $transient;
-        }
-
-        // Check if plugin is enabled.
-        if (!$this->is_enabled()) {
-            return $transient;
-        }
-
-        // Use cached results from the async cron job. NEVER make HTTP calls
-        // synchronously here — this hook fires inside admin page loads and
-        // would block update-core.php for minutes (504s) on sites with many
-        // plugins. The cron handler (gratis_ai_pt_refresh_cache) populates
-        // this cache; if missing, schedule it and return the transient as-is.
-        $cached = get_site_transient('gratis_ai_pt_translations_cache');
-
-        if (false === $cached) {
-            if (!wp_next_scheduled('gratis_ai_pt_refresh_cache')) {
-                wp_schedule_single_event(time() + 5, 'gratis_ai_pt_refresh_cache');
-            }
-            return $transient;
-        }
-
-        if (!is_array($cached) || empty($cached)) {
-            return $transient;
-        }
-
-        foreach ($cached as $entry) {
-            if (!isset($transient->translations)) {
-                $transient->translations = [];
-            }
-            $transient->translations[] = $entry;
-        }
-
-        return $transient;
-    }
-
-    /**
      * Refresh the translations cache (cron handler).
      *
      * Performs the slow per-plugin API/network work off the request path
-     * and stores the resulting list of translation entries in a transient
-     * for inject_translation_updates() to consume.
+     * and installs available AI language packs with WordPress's language
+     * pack upgrader.
      *
      * @since 1.0.0
      * @return void
@@ -271,7 +219,7 @@ class Translation_Manager {
             $batch[$textdomain]       = [
                 'textdomain' => $textdomain,
                 'version'    => $version,
-                'source'     => $this->is_wporg_plugin($slug) ? 'wporg' : 'premium',
+                'source'     => $this->get_plugin_source($plugin_data),
             ];
             $needed_map[$textdomain]  = $needed;
             $slug_map[$textdomain]    = $slug;
@@ -295,8 +243,8 @@ class Translation_Manager {
         }
 
         $results = $response['results'] ?? [];
-        $queued  = $response['queued'] ?? [];
-        $state['pending'] += count($queued);
+        $queued  = $response['queued'] ?? ($response['requested'] ?? []);
+        $state['pending'] += is_countable($queued) ? count($queued) : (int) ($response['queue_length'] ?? 0);
 
         foreach ($results as $textdomain => $by_locale) {
             if (!isset($needed_map[$textdomain])) {
@@ -343,6 +291,10 @@ class Translation_Manager {
         $pending = (int) ($state['pending'] ?? 0);
         $checked = count($state['plugins'] ?? []);
 
+        if (!empty($entries) && is_array($entries)) {
+            $this->install_translation_packages($entries);
+        }
+
         // Only cache the translation list when there are no server-side pending
         // items. If the server queued work, leave the existing cache intact so
         // plugins with package_url from a previous run remain visible.
@@ -364,6 +316,65 @@ class Translation_Manager {
         set_site_transient('gratis_ai_pt_pending_count', $pending, DAY_IN_SECONDS);
 
         delete_site_option('gratis_ai_pt_refresh_state');
+    }
+
+    /**
+     * Install available AI language packs through WordPress's upgrader API.
+     *
+     * @since 1.0.0
+     * @param array<int, array<string, mixed>> $entries Translation package entries.
+     * @return void
+     */
+    private function install_translation_packages(array $entries): void {
+        if (empty($entries)) {
+            return;
+        }
+
+        if (!class_exists('Language_Pack_Upgrader')) {
+            require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+            require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader-skin.php';
+            require_once ABSPATH . 'wp-admin/includes/class-automatic-upgrader-skin.php';
+            require_once ABSPATH . 'wp-admin/includes/class-language-pack-upgrader.php';
+        }
+
+        $upgrader = new \Language_Pack_Upgrader(new \Automatic_Upgrader_Skin());
+
+        foreach ($entries as $entry) {
+            if (!is_array($entry) || empty($entry['package']) || empty($entry['slug']) || empty($entry['language'])) {
+                continue;
+            }
+
+            $package = (string) $entry['package'];
+            if (!$this->is_trusted_package_url($package)) {
+                continue;
+            }
+
+            $language_update = (object) [
+                'type'       => 'plugin',
+                'slug'       => (string) $entry['slug'],
+                'language'   => (string) $entry['language'],
+                'version'    => (string) ($entry['version'] ?? ''),
+                'updated'    => (string) ($entry['updated'] ?? current_time('mysql')),
+                'package'    => $package,
+                'autoupdate' => true,
+            ];
+
+            $upgrader->upgrade($language_update, ['clear_update_cache' => false]);
+        }
+    }
+
+    /**
+     * Check whether a language-pack URL belongs to the configured API host.
+     *
+     * @since 1.0.0
+     * @param string $package_url Package URL returned by the translation API.
+     * @return bool True when the package URL host matches the API host.
+     */
+    private function is_trusted_package_url(string $package_url): bool {
+        $package_host = wp_parse_url($package_url, PHP_URL_HOST);
+        $api_host     = wp_parse_url(GRATIS_AI_PT_API_BASE, PHP_URL_HOST);
+
+        return is_string($package_host) && is_string($api_host) && $package_host === $api_host;
     }
 
     /**
@@ -512,31 +523,10 @@ class Translation_Manager {
      * @return array Array of locale codes that need AI translations.
      */
     private function get_needed_translations(string $textdomain, string $slug = '', array $installed = [], array $available = []): array {
-        // Get site languages (for multisite) or just the site locale.
-        $needed_locales = [get_locale()];
+        $needed_locales = $this->get_site_locales();
 
-        // Include all user-profile locales (users can override site language).
-        global $wpdb;
-        $user_locales = $wpdb->get_col(
-            "SELECT DISTINCT meta_value FROM {$wpdb->usermeta} WHERE meta_key = 'locale' AND meta_value != ''"
-        );
-        if (!empty($user_locales)) {
-            $needed_locales = array_merge($needed_locales, $user_locales);
-        }
-
-        if (is_multisite()) {
-            $site_locales = $wpdb->get_col("SELECT meta_value FROM {$wpdb->sitemeta} WHERE meta_key = 'WPLANG'");
-            $needed_locales = array_merge($needed_locales, $site_locales);
-        }
-
-        $needed_locales = array_filter(array_unique($needed_locales));
-
-        if (empty($needed_locales)) {
-            $needed_locales = ['en_US'];
-        }
-
-        // Filter out English (no translation needed).
-        $needed_locales = array_diff($needed_locales, ['en_US', 'en']);
+        // Filter out English/site-default markers (no translation needed).
+        $needed_locales = array_diff($needed_locales, ['en_US', 'en', 'site-default']);
 
         // Use prefetched maps when supplied (chunked refresh path); otherwise
         // fetch them lazily for ad-hoc callers.
@@ -556,7 +546,7 @@ class Translation_Manager {
         foreach ($needed_locales as $locale) {
             // Check if we have official translations from wordpress.org.
             // Pass both textdomain (for installed map) and slug (for available
-            // map from update_plugins transient, which is keyed by plugin slug).
+            // translations, which are keyed by plugin slug).
             $has_official = $this->has_official_translation($textdomain, $slug, $locale, $installed_translations, $available);
 
             if (!$has_official) {
@@ -576,15 +566,14 @@ class Translation_Manager {
     }
 
     /**
-     * Check if a plugin has an official translation, using only WP's caches.
+     * Check if a plugin has an official translation, using WordPress APIs.
      *
-     * Never calls api.wordpress.org. Two sources:
+     * Two sources:
      *
      * 1. wp_get_installed_translations('plugins') — translations already
      *    on disk, keyed by textdomain. If installed, it's official.
-     * 2. The 'update_plugins' site transient — populated by WP's normal
-     *    update-check cycle, contains a `translations` array of available
-     *    plugin translation updates from wp.org, keyed by plugin slug.
+     * 2. wp_get_translation_updates() — populated by WordPress's normal
+     *    update-check cycle and keyed by plugin slug.
      *
      * Anything not in either cache is treated as missing → AI fills the
      * gap. WordPress will overwrite our AI .mo if/when wp.org publishes
@@ -592,8 +581,7 @@ class Translation_Manager {
      *
      * @since 1.2.0
      * @param string $textdomain Plugin textdomain (keys the installed-translations map).
-     * @param string $slug       Plugin slug / folder name (keys the available map from
-     *                           update_plugins transient). Pass '' when unknown.
+     * @param string $slug       Plugin slug / folder name. Pass '' when unknown.
      * @param string $locale     Locale code.
      * @param array  $installed  Pre-fetched wp_get_installed_translations('plugins').
      * @param array  $available  Pre-built [slug => [locale => true]] map.
@@ -611,8 +599,8 @@ class Translation_Manager {
             return true;
         }
 
-        // Available translations from wp.org (update_plugins transient) are
-        // indexed by plugin slug, which may differ from textdomain.
+        // Available translations from wp.org are indexed by plugin slug,
+        // which may differ from textdomain.
         $lookup_keys = array_filter(array_unique([$slug, $textdomain]));
         foreach ($lookup_keys as $key) {
             if (isset($available[$key][$locale])) {
@@ -624,66 +612,85 @@ class Translation_Manager {
     }
 
     /**
-     * Build a [textdomain => [locale => true]] map from the update_plugins
-     * transient's translations array. Cheap; runs once per refresh batch.
+     * Build a [slug => [locale => true]] map from WordPress translation data.
      *
      * @since 1.2.0
-     * @return array
+     * @return array<string, array<string, bool>>
      */
-    /**
-     * Check if a plugin slug is from the WordPress.org repository.
-     *
-     * Plugins in the update_plugins transient's response or no_update
-     * arrays are from wp.org. Everything else is premium/custom.
-     *
-     * @since 1.1.0
-     * @param string $slug Plugin slug.
-     * @return bool True if the plugin is from wp.org.
-     */
-    private function is_wporg_plugin(string $slug): bool {
-        static $wporg_slugs = null;
-
-        if (null === $wporg_slugs) {
-            $wporg_slugs = [];
-            $transient = get_site_transient('update_plugins');
-            if (is_object($transient)) {
-                // Plugins with available updates.
-                if (!empty($transient->response)) {
-                    foreach ($transient->response as $file => $data) {
-                        $s = is_object($data) ? ($data->slug ?? '') : ($data['slug'] ?? '');
-                        if ($s) {
-                            $wporg_slugs[$s] = true;
-                        }
-                    }
-                }
-                // Plugins that are up to date.
-                if (!empty($transient->no_update)) {
-                    foreach ($transient->no_update as $file => $data) {
-                        $s = is_object($data) ? ($data->slug ?? '') : ($data['slug'] ?? '');
-                        if ($s) {
-                            $wporg_slugs[$s] = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        return isset($wporg_slugs[$slug]);
-    }
-
     private function get_available_translations_map(): array {
         $map = [];
-        $transient = get_site_transient('update_plugins');
-        if (!is_object($transient) || empty($transient->translations)) {
+
+        if (!function_exists('wp_get_translation_updates')) {
+            require_once ABSPATH . 'wp-admin/includes/update.php';
+        }
+
+        $translation_updates = wp_get_translation_updates();
+        if (empty($translation_updates)) {
             return $map;
         }
-        foreach ($transient->translations as $entry) {
-            if (empty($entry['slug']) || empty($entry['language'])) {
+
+        foreach ($translation_updates as $entry) {
+            if (!is_object($entry) || 'plugin' !== ($entry->type ?? '')) {
                 continue;
             }
-            $map[(string) $entry['slug']][(string) $entry['language']] = true;
+            if (empty($entry->slug) || empty($entry->language)) {
+                continue;
+            }
+            $map[(string) $entry->slug][(string) $entry->language] = true;
         }
+
         return $map;
+    }
+
+    /**
+     * Get all locales needed by the site, network, and user profiles.
+     *
+     * @since 1.0.0
+     * @return array<int, string> Locale codes.
+     */
+    private function get_site_locales(): array {
+        $locales = [get_locale()];
+
+        $user_ids = get_users(['fields' => 'ID']);
+        foreach ($user_ids as $user_id) {
+            $user_locale = get_user_meta((int) $user_id, 'locale', true);
+            if (is_string($user_locale) && '' !== $user_locale) {
+                $locales[] = $user_locale;
+            }
+        }
+
+        if (is_multisite() && function_exists('get_sites')) {
+            $site_ids = get_sites(
+                [
+                    'fields' => 'ids',
+                    'number' => 0,
+                ]
+            );
+
+            foreach ($site_ids as $site_id) {
+                $site_locale = get_blog_option((int) $site_id, 'WPLANG', '');
+                if (is_string($site_locale) && '' !== $site_locale) {
+                    $locales[] = $site_locale;
+                }
+            }
+        }
+
+        $locales = array_values(array_filter(array_unique($locales)));
+
+        return empty($locales) ? ['en_US'] : $locales;
+    }
+
+    /**
+     * Infer whether a plugin uses WordPress.org or another update source.
+     *
+     * @since 1.0.0
+     * @param array $plugin_data Plugin header data from get_plugins().
+     * @return string Source label for the translation API.
+     */
+    private function get_plugin_source(array $plugin_data): string {
+        $update_uri = (string) ($plugin_data['UpdateURI'] ?? '');
+
+        return '' === $update_uri ? 'wporg' : 'premium';
     }
 
     /**
@@ -917,12 +924,12 @@ class Translation_Manager {
 
             // Delete files older than 30 days.
             if ($file_time && (time() - $file_time) > (30 * DAY_IN_SECONDS)) {
-                @unlink($file);
+                wp_delete_file($file);
 
                 // Also delete the .po file if it exists.
                 $po_file = str_replace('.mo', '.po', $file);
                 if (file_exists($po_file)) {
-                    @unlink($po_file);
+                    wp_delete_file($po_file);
                 }
             }
         }
