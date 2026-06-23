@@ -416,9 +416,13 @@ class CLI {
 			}
 		}
 
-        $locales = array_filter(array_unique($locales));
-		$locales = array_diff($locales, ['en_US', 'en', 'site-default']);
+		$locales = array_values(
+			array_diff(
+				array_filter( array_unique( $locales ) ),
+				[ 'en_US', 'en', 'site-default' ]
+			)
+		);
 
-        return empty($locales) ? [get_locale()] : $locales;
-    }
+		return empty( $locales ) ? [ get_locale() ] : $locales;
+	}
 }

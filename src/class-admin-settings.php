@@ -492,8 +492,15 @@ class Admin_Settings {
 			<p>
 				<?php
 				printf(
-					/* translators: %s: Number of pending translations. */
-					esc_html__( 'Superdav AI Translations: %s translation(s) are being generated and will be available shortly.', 'superdav-ai-translations' ),
+					esc_html(
+						/* translators: %s: Number of pending translations. */
+						_n(
+							'Superdav AI Translations: %s translation is being generated and will be available shortly.',
+							'Superdav AI Translations: %s translations are being generated and will be available shortly.',
+							$pending_count,
+							'superdav-ai-translations'
+						)
+					),
 					esc_html( number_format_i18n( $pending_count ) )
 				);
 				?>

@@ -371,10 +371,18 @@ class Translation_Manager {
      * @return bool True when the package URL host matches the API host.
      */
     private function is_trusted_package_url(string $package_url): bool {
-        $package_host = wp_parse_url($package_url, PHP_URL_HOST);
-        $api_host     = wp_parse_url(GRATIS_AI_PT_API_BASE, PHP_URL_HOST);
+        $api_base       = (string) apply_filters('gratis_ai_pt_api_base', GRATIS_AI_PT_API_BASE);
+        $package_scheme = wp_parse_url($package_url, PHP_URL_SCHEME);
+        $package_host   = wp_parse_url($package_url, PHP_URL_HOST);
+        $api_scheme     = wp_parse_url($api_base, PHP_URL_SCHEME);
+        $api_host       = wp_parse_url($api_base, PHP_URL_HOST);
 
-        return is_string($package_host) && is_string($api_host) && $package_host === $api_host;
+        return is_string($package_scheme)
+            && is_string($package_host)
+            && is_string($api_scheme)
+            && is_string($api_host)
+            && strtolower($package_scheme) === strtolower($api_scheme)
+            && strtolower($package_host) === strtolower($api_host);
     }
 
     /**
@@ -649,6 +657,12 @@ class Translation_Manager {
      * @return array<int, string> Locale codes.
      */
     private function get_site_locales(): array {
+        static $cached_locales = null;
+
+        if (null !== $cached_locales) {
+            return $cached_locales;
+        }
+
         $locales = [get_locale()];
 
         $user_ids = get_users(['fields' => 'ID']);
@@ -677,7 +691,9 @@ class Translation_Manager {
 
         $locales = array_values(array_filter(array_unique($locales)));
 
-        return empty($locales) ? ['en_US'] : $locales;
+        $cached_locales = empty($locales) ? ['en_US'] : $locales;
+
+        return $cached_locales;
     }
 
     /**

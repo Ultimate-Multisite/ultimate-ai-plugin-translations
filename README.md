@@ -47,7 +47,7 @@ The official WordPress translation platform (translate.wordpress.org) relies on 
 ### Install via Composer
 
 ```bash
-composer require ultimatemultisite/superdav-ai-translations
+composer require ultimate-multisite/ultimate-ai-plugin-translations
 ```
 
 ### For Multisite

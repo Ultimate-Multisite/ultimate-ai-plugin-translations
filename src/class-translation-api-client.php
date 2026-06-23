@@ -203,6 +203,13 @@ class Translation_API_Client {
             );
         }
 
+        if (!is_array($data)) {
+            return new \WP_Error(
+                'invalid_response',
+                __('Invalid response from translation status endpoint', 'superdav-ai-translations')
+            );
+        }
+
         // Cache for a shorter period for status checks.
         $this->remember_cache_key($cache_key);
         set_site_transient($cache_key, $data, MINUTE_IN_SECONDS * 5);
