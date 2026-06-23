@@ -19,6 +19,14 @@ namespace GratisAIPluginTranslations;
 class Translation_API_Client {
 
     /**
+     * Site option that tracks dynamic cache keys created by this client.
+     *
+     * @since 1.0.0
+     * @var string
+     */
+    private const CACHE_KEYS_OPTION = 'gratis_ai_pt_cache_keys';
+
+    /**
      * API base URL.
      *
      * @since 1.0.0
@@ -115,7 +123,7 @@ class Translation_API_Client {
                 'api_error',
                 sprintf(
                     /* translators: %d: HTTP status code */
-                    __('Batch translation API returned error code: %d', 'gratis-ai-plugin-translations'),
+                    __('Batch translation API returned error code: %d', 'superdav-ai-translations'),
                     $status_code
                 )
             );
@@ -123,7 +131,7 @@ class Translation_API_Client {
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
         if (!is_array($body)) {
-            return new \WP_Error('invalid_response', __('Invalid response from batch endpoint', 'gratis-ai-plugin-translations'));
+            return new \WP_Error('invalid_response', __('Invalid response from batch endpoint', 'superdav-ai-translations'));
         }
 
         return [
@@ -179,7 +187,7 @@ class Translation_API_Client {
                 'api_error',
                 sprintf(
                     /* translators: %d: HTTP status code */
-                    __('Translation API returned error code: %d', 'gratis-ai-plugin-translations'),
+                    __('Translation API returned error code: %d', 'superdav-ai-translations'),
                     $status_code
                 )
             );
@@ -191,11 +199,19 @@ class Translation_API_Client {
         if (json_last_error() !== JSON_ERROR_NONE) {
             return new \WP_Error(
                 'json_error',
-                __('Failed to parse API response', 'gratis-ai-plugin-translations')
+                __('Failed to parse API response', 'superdav-ai-translations')
+            );
+        }
+
+        if (!is_array($data)) {
+            return new \WP_Error(
+                'invalid_response',
+                __('Invalid response from translation status endpoint', 'superdav-ai-translations')
             );
         }
 
         // Cache for a shorter period for status checks.
+        $this->remember_cache_key($cache_key);
         set_site_transient($cache_key, $data, MINUTE_IN_SECONDS * 5);
 
         return $data;
@@ -236,7 +252,7 @@ class Translation_API_Client {
         if ($status_code !== 200) {
             return new \WP_Error(
                 'api_unavailable',
-                __('Translation API is currently unavailable', 'gratis-ai-plugin-translations')
+                __('Translation API is currently unavailable', 'superdav-ai-translations')
             );
         }
 
@@ -246,7 +262,7 @@ class Translation_API_Client {
         if (json_last_error() !== JSON_ERROR_NONE) {
             return new \WP_Error(
                 'json_error',
-                __('Failed to parse API response', 'gratis-ai-plugin-translations')
+                __('Failed to parse API response', 'superdav-ai-translations')
             );
         }
 
@@ -263,20 +279,38 @@ class Translation_API_Client {
      * @return void
      */
     public function clear_cache(): void {
-        global $wpdb;
+        delete_site_transient('gratis_ai_pt_api_status');
+        delete_site_transient('gratis_ai_pt_translations_cache');
+        delete_site_transient('gratis_ai_pt_pending_count');
 
-        $wpdb->query(
-            $wpdb->prepare(
-                "DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE %s",
-                '%_transient_gratis_ai_pt_%'
-            )
-        );
+        $cache_keys = get_site_option(self::CACHE_KEYS_OPTION, []);
+        if (is_array($cache_keys)) {
+            foreach ($cache_keys as $cache_key) {
+                if (is_string($cache_key) && 0 === strpos($cache_key, 'gratis_ai_pt_')) {
+                    delete_site_transient($cache_key);
+                }
+            }
+        }
 
-        $wpdb->query(
-            $wpdb->prepare(
-                "DELETE FROM {$wpdb->sitemeta} WHERE meta_key LIKE %s",
-                '%_transient_timeout_gratis_ai_pt_%'
-            )
-        );
+        delete_site_option(self::CACHE_KEYS_OPTION);
+    }
+
+    /**
+     * Track a dynamic transient key so cache clearing can use WordPress APIs.
+     *
+     * @since 1.0.0
+     * @param string $cache_key Cache key to remember.
+     * @return void
+     */
+    private function remember_cache_key(string $cache_key): void {
+        $cache_keys = get_site_option(self::CACHE_KEYS_OPTION, []);
+        if (!is_array($cache_keys)) {
+            $cache_keys = [];
+        }
+
+        $cache_keys[] = $cache_key;
+        $cache_keys = array_values(array_unique(array_filter($cache_keys, 'is_string')));
+
+        update_site_option(self::CACHE_KEYS_OPTION, $cache_keys);
     }
 }

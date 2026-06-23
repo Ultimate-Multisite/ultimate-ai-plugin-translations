@@ -6,7 +6,7 @@
 
 ## What Was Created
 
-### Client Plugin (`gratis-ai-plugin-translations/`)
+### Client Plugin (`superdav-ai-translations/`)
 - Main plugin file with proper headers
 - REST API client for translation service
 - Admin settings page
@@ -14,7 +14,7 @@
 - Translation manager
 - Complete documentation
 
-### Server Plugin (`gratis-ai-translations-server/`)
+### Server Plugin (`superdav-ai-translations-server/`)
 - REST API endpoints
 - Translation queue system
 - AI translation generator using OpenAI
@@ -37,7 +37,7 @@
 
 **Required for WordPress.org:**
 - `readme.txt` - WordPress.org plugin listing
-- `gratis-ai-plugin-translations.php` - Main plugin file
+- `superdav-ai-translations.php` - Main plugin file
 - `LICENSE` - GPL license (to be added)
 
 **Documentation:**
@@ -79,12 +79,13 @@
 
 ### 1. Prepare Assets
 
-Create these files in the plugin root:
+Create a clean distribution folder with only runtime files:
 ```
-gratis-ai-plugin-translations/
-├── gratis-ai-plugin-translations.php
+superdav-ai-translations/
+├── superdav-ai-translations.php
 ├── readme.txt
 ├── LICENSE
+├── src/
 └── assets/
     ├── banner-772x250.png (optional)
     ├── icon-256x256.png (optional)
@@ -109,10 +110,16 @@ mv gpl-2.0.txt LICENSE
 ### 3. Zip the Plugin
 
 ```bash
-cd /home/dave/tgc.church/site/web/app/plugins/
-zip -r gratis-ai-plugin-translations.zip gratis-ai-plugin-translations/ \
-  -x "*.git*" -x "*/.DS_Store" -x "*/node_modules/*"
+rm -rf build/superdav-ai-translations build/superdav-ai-translations.zip
+mkdir -p build/superdav-ai-translations
+cp superdav-ai-translations.php readme.txt LICENSE build/superdav-ai-translations/
+cp -R src build/superdav-ai-translations/src
+(cd build && zip -r superdav-ai-translations.zip superdav-ai-translations)
 ```
+
+Do not include development files such as `.gitignore`, `AGENTS.md`, `TODO.md`,
+`phpstan.neon.dist`, `wp-cli.yml`, or test/submission Markdown guides in the
+WordPress.org ZIP/SVN import.
 
 ### 4. Submit to WordPress.org
 
@@ -120,15 +127,15 @@ zip -r gratis-ai-plugin-translations.zip gratis-ai-plugin-translations/ \
 2. Log in with WordPress.org account
 3. Upload the ZIP file
 4. Fill out the form:
-   - **Plugin Name**: Gratis AI Plugin Translations
-   - **Plugin URL**: https://github.com/superdav42/gratis-ai-plugin-translations
+   - **Plugin Name**: Superdav AI Translations
+   - **Plugin URL**: https://github.com/superdav42/superdav-ai-translations
    - **Description**: Automatically provides AI-generated translations for WordPress plugins when official translations are missing or incomplete from translate.wordpress.org.
 
 ### 5. SVN Repository
 
 After approval, you'll get an SVN repository:
 ```bash
-svn checkout https://plugins.svn.wordpress.org/gratis-ai-plugin-translations/trunk
+svn checkout https://plugins.svn.wordpress.org/superdav-ai-translations/trunk
 ```
 
 Push updates:

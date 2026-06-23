@@ -1,4 +1,4 @@
-=== Gratis AI Plugin Translations ===
+=== Superdav AI Translations ===
 Contributors: ultimatemultisite
 Tags: translation, ai, machine-translation, i18n, localization
 Requires at least: 5.8
@@ -14,7 +14,7 @@ Automatically provides AI-generated translations for WordPress plugins when offi
 
 The official WordPress translation platform (translate.wordpress.org) relies on human volunteers and only supports plugins hosted in the WordPress.org plugin repository. This creates a gap for premium plugins, plugins with incomplete translations, and plugins that haven't been fully translated.
 
-**Gratis AI Plugin Translations** bridges this gap by providing AI-powered translations that are:
+**Superdav AI Translations** bridges this gap by providing AI-powered translations that are:
 
 * Automatically downloaded when needed
 * Generated on-demand using advanced language models
@@ -64,7 +64,7 @@ Translations are cached locally on your server. No data is stored on external se
 = From WordPress.org =
 
 1. Go to **Plugins > Add New** in your WordPress admin
-2. Search for "Gratis AI Plugin Translations"
+2. Search for "Superdav AI Translations"
 3. Click **Install Now** and then **Activate**
 
 = Manual Installation =
@@ -121,7 +121,7 @@ The plugin is free. The translation service is currently offered at no cost whil
 * New: "Check for updates now" button that forces a fresh WordPress update check before triggering an AI refresh
 * New: Default auto_approve=false — AI translations wait for server-side approval before downloading
 * New: Allow downloads from translation server on private-IP/local networks (development environments)
-* New: WP-CLI support (`wp gratis-ai-translations`)
+* New: WP-CLI support (`wp superdav-ai-translations`)
 * New: Full multisite support with network-admin settings page
 
 == Upgrade Notice ==

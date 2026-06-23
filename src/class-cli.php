@@ -1,6 +1,6 @@
 <?php
 /**
- * WP-CLI Commands for Gratis AI Plugin Translations
+ * WP-CLI Commands for Superdav AI Translations
  *
  * @package GratisAIPluginTranslations
  */
@@ -43,8 +43,8 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp gratis-ai-translations status
-     *     wp gratis-ai-translations status --verbose
+     *     wp superdav-ai-translations status
+     *     wp superdav-ai-translations status --verbose
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -91,8 +91,8 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp gratis-ai-translations check woocommerce
-     *     wp gratis-ai-translations check woocommerce --locale=es_ES
+     *     wp superdav-ai-translations check woocommerce
+     *     wp superdav-ai-translations check woocommerce --locale=es_ES
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -170,8 +170,8 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp gratis-ai-translations request woocommerce
-     *     wp gratis-ai-translations request woocommerce --locale=de_DE
+     *     wp superdav-ai-translations request woocommerce
+     *     wp superdav-ai-translations request woocommerce --locale=de_DE
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -228,8 +228,8 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp gratis-ai-translations list
-     *     wp gratis-ai-translations list --format=json
+     *     wp superdav-ai-translations list
+     *     wp superdav-ai-translations list --format=json
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -259,7 +259,7 @@ class CLI {
                 $translations[] = [
                     'plugin'   => $matches[1],
                     'locale'   => $matches[2],
-                    'modified' => date('Y-m-d H:i:s', filemtime($file)),
+					'modified' => gmdate('Y-m-d H:i:s', filemtime($file)),
                     'size'     => size_format(filesize($file)),
                 ];
             }
@@ -279,7 +279,7 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp gratis-ai-translations clear-cache
+     *     wp superdav-ai-translations clear-cache
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -309,7 +309,7 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp gratis-ai-translations status-plugin woocommerce de_DE
+     *     wp superdav-ai-translations status-plugin woocommerce de_DE
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -397,18 +397,32 @@ class CLI {
      * @since 1.0.0
      * @return array Array of locale codes.
      */
-    private function get_site_locales(): array {
-        $locales = [get_locale()];
+	private function get_site_locales(): array {
+		$locales = [get_locale()];
 
-        if (is_multisite()) {
-            global $wpdb;
-            $site_locales = $wpdb->get_col("SELECT meta_value FROM {$wpdb->sitemeta} WHERE meta_key = 'WPLANG'");
-            $locales = array_merge($locales, $site_locales);
-        }
+		if (is_multisite() && function_exists('get_sites')) {
+			$site_ids = get_sites(
+				[
+					'fields' => 'ids',
+					'number' => 0,
+				]
+			);
 
-        $locales = array_filter(array_unique($locales));
-        $locales = array_diff($locales, ['en_US', 'en']);
+			foreach ($site_ids as $site_id) {
+				$site_locale = get_blog_option((int) $site_id, 'WPLANG', '');
+				if (is_string($site_locale) && '' !== $site_locale) {
+					$locales[] = $site_locale;
+				}
+			}
+		}
 
-        return empty($locales) ? [get_locale()] : $locales;
-    }
+		$locales = array_values(
+			array_diff(
+				array_filter( array_unique( $locales ) ),
+				[ 'en_US', 'en', 'site-default' ]
+			)
+		);
+
+		return empty( $locales ) ? [ get_locale() ] : $locales;
+	}
 }

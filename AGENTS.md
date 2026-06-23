@@ -1,4 +1,4 @@
-# AGENTS.md — Gratis AI Plugin Translations
+# AGENTS.md — Superdav AI Translations
 
 ## Project Overview
 
@@ -15,7 +15,7 @@ WordPress plugin (client-side) that automatically provides AI-generated translat
 
 ```
 ultimate-ai-plugin-translations/
-├── gratis-ai-plugin-translations.php  # Plugin entry point (namespaced)
+├── superdav-ai-translations.php       # Plugin entry point (namespaced)
 ├── src/
 │   ├── class-translation-manager.php  # Core translation logic
 │   ├── class-admin-settings.php       # Network admin settings page
@@ -35,7 +35,7 @@ ultimate-ai-plugin-translations/
 - **Namespace**: `GratisAIPluginTranslations\`
 - **Autoloading**: Custom `spl_autoload_register` (maps class names to `src/class-{name}.php`)
 - **File naming**: `class-{name}.php` in `src/` (WordPress convention with PSR-4 namespace)
-- **Text domain**: `gratis-ai-plugin-translations`
+- **Text domain**: `superdav-ai-translations`
 - **Network plugin**: `Network: true`
 - **Constants prefix**: `GRATIS_AI_PT_`
 - **Uses `declare(strict_types=1)`**
@@ -48,7 +48,7 @@ ultimate-ai-plugin-translations/
 - Network-level options via `get_site_option()` / `add_site_option()`
 - Default API base: `https://translate.ultimatemultisite.com/wp-json/gratis-ai-translations/v1`
 - Transient-based caching for API responses
-- WP-CLI commands under `wp gratis-ai-translations`
+- WP-CLI commands under `wp superdav-ai-translations`
 
 ## Important Notes
 
