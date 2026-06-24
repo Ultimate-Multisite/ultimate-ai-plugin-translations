@@ -416,10 +416,11 @@ class CLI {
 			}
 		}
 
-		$locales = array_values(
+		$excluded_locales = [ 'en_US', 'en', 'site-default' ];
+		$locales          = array_values(
 			array_diff(
 				array_filter( array_unique( $locales ) ),
-				[ 'en_US', 'en', 'site-default' ]
+				$excluded_locales
 			)
 		);
 
