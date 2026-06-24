@@ -181,8 +181,9 @@ class Translation_Manager {
      */
     private function process_refresh_chunk(array $plugin_files, array &$state): void {
         $all_plugins = get_plugins();
-        $installed   = wp_get_installed_translations('plugins');
-        $available   = $this->get_available_translations_map();
+        $installed    = wp_get_installed_translations('plugins');
+        $available    = $this->get_available_translations_map();
+        $site_locales = $this->get_site_locales();
 
         // Build the per-chunk request: textdomain → {version, slug, file}.
         // Track every locale needed across the chunk so we can send a single
@@ -209,7 +210,7 @@ class Translation_Manager {
                 $slug = sanitize_title(basename((string) $plugin_file, '.php'));
             }
 
-            $needed = $this->get_needed_translations($textdomain, $slug, $installed, $available);
+            $needed = $this->get_needed_translations($textdomain, $slug, $installed, $available, $site_locales);
             if (empty($needed)) {
                 continue;
             }
@@ -527,11 +528,18 @@ class Translation_Manager {
      * @param string $textdomain Plugin textdomain (keys installed-translations map).
      * @param string $slug       Plugin slug / folder name (keys available-translations map).
      * @param array  $installed  Optional pre-fetched wp_get_installed_translations('plugins').
-     * @param array  $available  Optional pre-built [slug => [locale => true]] map.
+     * @param array  $available    Optional pre-built [slug => [locale => true]] map.
+     * @param array  $site_locales Optional pre-fetched locales needed by the site/network/users.
      * @return array Array of locale codes that need AI translations.
      */
-    private function get_needed_translations(string $textdomain, string $slug = '', array $installed = [], array $available = []): array {
-        $needed_locales = $this->get_site_locales();
+    private function get_needed_translations(
+        string $textdomain,
+        string $slug = '',
+        array $installed = [],
+        array $available = [],
+        array $site_locales = []
+    ): array {
+        $needed_locales = !empty($site_locales) ? $site_locales : $this->get_site_locales();
 
         // Filter out English/site-default markers (no translation needed).
         $needed_locales = array_diff($needed_locales, ['en_US', 'en', 'site-default']);
