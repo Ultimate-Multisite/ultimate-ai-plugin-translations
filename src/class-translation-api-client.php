@@ -203,7 +203,7 @@ class Translation_API_Client {
             );
         }
 
-        if (!is_array($data)) {
+        if (!$this->is_associative_response($data)) {
             return new \WP_Error(
                 'invalid_response',
                 __('Invalid response from translation status endpoint', 'superdav-ai-translations')
@@ -312,5 +312,20 @@ class Translation_API_Client {
         $cache_keys = array_values(array_unique(array_filter($cache_keys, 'is_string')));
 
         update_site_option(self::CACHE_KEYS_OPTION, $cache_keys);
+    }
+
+    /**
+     * Confirm a decoded API response is an object-shaped array.
+     *
+     * @since 1.2.0
+     * @param mixed $data Decoded JSON response payload.
+     * @return bool True when the response can be cached and returned.
+     */
+    private function is_associative_response($data): bool {
+        if (!is_array($data) || [] === $data) {
+            return false;
+        }
+
+        return array_keys($data) !== range(0, count($data) - 1);
     }
 }
