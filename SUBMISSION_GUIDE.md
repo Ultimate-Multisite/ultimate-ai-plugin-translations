@@ -6,7 +6,7 @@
 
 ## What Was Created
 
-### Client Plugin (`superdav-ai-translations/`)
+### Client Plugin (`superdav-ai-plugin-translations/`)
 - Main plugin file with proper headers
 - REST API client for translation service
 - Admin settings page
@@ -14,7 +14,7 @@
 - Translation manager
 - Complete documentation
 
-### Server Plugin (`superdav-ai-translations-server/`)
+### Server Plugin (`superdav-ai-plugin-translations-server/`)
 - REST API endpoints
 - Translation queue system
 - AI translation generator using OpenAI
@@ -37,7 +37,7 @@
 
 **Required for WordPress.org:**
 - `readme.txt` - WordPress.org plugin listing
-- `superdav-ai-translations.php` - Main plugin file
+- `superdav-ai-plugin-translations.php` - Main plugin file
 - `LICENSE` - GPL license (to be added)
 
 **Documentation:**
@@ -81,8 +81,8 @@
 
 Create a clean distribution folder with only runtime files:
 ```
-superdav-ai-translations/
-├── superdav-ai-translations.php
+superdav-ai-plugin-translations/
+├── superdav-ai-plugin-translations.php
 ├── readme.txt
 ├── LICENSE
 ├── src/
@@ -110,11 +110,11 @@ mv gpl-2.0.txt LICENSE
 ### 3. Zip the Plugin
 
 ```bash
-rm -rf build/superdav-ai-translations build/superdav-ai-translations.zip
-mkdir -p build/superdav-ai-translations
-cp superdav-ai-translations.php readme.txt LICENSE build/superdav-ai-translations/
-cp -R src build/superdav-ai-translations/src
-(cd build && zip -r superdav-ai-translations.zip superdav-ai-translations)
+rm -rf build/superdav-ai-plugin-translations build/superdav-ai-plugin-translations.zip
+mkdir -p build/superdav-ai-plugin-translations
+cp superdav-ai-plugin-translations.php readme.txt LICENSE build/superdav-ai-plugin-translations/
+cp -R src build/superdav-ai-plugin-translations/src
+(cd build && zip -r superdav-ai-plugin-translations.zip superdav-ai-plugin-translations)
 ```
 
 Do not include development files such as `.gitignore`, `AGENTS.md`, `TODO.md`,
@@ -127,15 +127,15 @@ WordPress.org ZIP/SVN import.
 2. Log in with WordPress.org account
 3. Upload the ZIP file
 4. Fill out the form:
-   - **Plugin Name**: Superdav AI Translations
-   - **Plugin URL**: https://github.com/superdav42/superdav-ai-translations
+   - **Plugin Name**: Superdav AI Plugin Translations
+   - **Plugin URL**: https://github.com/superdav42/superdav-ai-plugin-translations
    - **Description**: Automatically provides AI-generated translations for WordPress plugins when official translations are missing or incomplete from translate.wordpress.org.
 
 ### 5. SVN Repository
 
 After approval, you'll get an SVN repository:
 ```bash
-svn checkout https://plugins.svn.wordpress.org/superdav-ai-translations/trunk
+svn checkout https://plugins.svn.wordpress.org/superdav-ai-plugin-translations/trunk
 ```
 
 Push updates:

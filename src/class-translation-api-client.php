@@ -123,7 +123,7 @@ class Translation_API_Client {
                 'api_error',
                 sprintf(
                     /* translators: %d: HTTP status code */
-                    __('Batch translation API returned error code: %d', 'superdav-ai-translations'),
+                    __('Batch translation API returned error code: %d', 'superdav-ai-plugin-translations'),
                     $status_code
                 )
             );
@@ -131,7 +131,7 @@ class Translation_API_Client {
 
         $body = json_decode(wp_remote_retrieve_body($response), true);
         if (!is_array($body)) {
-            return new \WP_Error('invalid_response', __('Invalid response from batch endpoint', 'superdav-ai-translations'));
+            return new \WP_Error('invalid_response', __('Invalid response from batch endpoint', 'superdav-ai-plugin-translations'));
         }
 
         return [
@@ -187,7 +187,7 @@ class Translation_API_Client {
                 'api_error',
                 sprintf(
                     /* translators: %d: HTTP status code */
-                    __('Translation API returned error code: %d', 'superdav-ai-translations'),
+                    __('Translation API returned error code: %d', 'superdav-ai-plugin-translations'),
                     $status_code
                 )
             );
@@ -199,14 +199,14 @@ class Translation_API_Client {
         if (json_last_error() !== JSON_ERROR_NONE) {
             return new \WP_Error(
                 'json_error',
-                __('Failed to parse API response', 'superdav-ai-translations')
+                __('Failed to parse API response', 'superdav-ai-plugin-translations')
             );
         }
 
         if (!$this->is_associative_response($data)) {
             return new \WP_Error(
                 'invalid_response',
-                __('Invalid response from translation status endpoint', 'superdav-ai-translations')
+                __('Invalid response from translation status endpoint', 'superdav-ai-plugin-translations')
             );
         }
 
@@ -252,7 +252,7 @@ class Translation_API_Client {
         if ($status_code !== 200) {
             return new \WP_Error(
                 'api_unavailable',
-                __('Translation API is currently unavailable', 'superdav-ai-translations')
+                __('Translation API is currently unavailable', 'superdav-ai-plugin-translations')
             );
         }
 
@@ -262,7 +262,7 @@ class Translation_API_Client {
         if (json_last_error() !== JSON_ERROR_NONE) {
             return new \WP_Error(
                 'json_error',
-                __('Failed to parse API response', 'superdav-ai-translations')
+                __('Failed to parse API response', 'superdav-ai-plugin-translations')
             );
         }
 

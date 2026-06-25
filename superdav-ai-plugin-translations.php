@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Superdav AI Translations
+ * Plugin Name: Superdav AI Plugin Translations
  * Plugin URI: https://translate.ultimatemultisite.com
  * Description: Automatically provides AI-generated translations for WordPress plugins when official translations are missing or incomplete from translate.wordpress.org.
  * Version: 1.0.0
@@ -10,7 +10,7 @@
  * Author URI: https://ultimatemultisite.com
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: superdav-ai-translations
+ * Text Domain: superdav-ai-plugin-translations
  * Network: true
  *
  * @package GratisAIPluginTranslations
@@ -70,7 +70,7 @@ function init(): void
                 <p><?php
                     printf(
                         /* translators: %s: Current PHP version. */
-                        esc_html__('Superdav AI Translations requires PHP 8.0 or higher. You are running PHP %s.', 'superdav-ai-translations'),
+                        esc_html__('Superdav AI Plugin Translations requires PHP 8.0 or higher. You are running PHP %s.', 'superdav-ai-plugin-translations'),
                         esc_html(PHP_VERSION)
                     );
                 ?></p>
@@ -87,7 +87,7 @@ function init(): void
     // WP-CLI commands.
     if (defined('WP_CLI') && WP_CLI) {
         require_once GRATIS_AI_PT_DIR . 'src/class-cli.php';
-        \WP_CLI::add_command('superdav-ai-translations', CLI::class);
+        \WP_CLI::add_command('superdav-ai-plugin-translations', CLI::class);
     }
 }
 

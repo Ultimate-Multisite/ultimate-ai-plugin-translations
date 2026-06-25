@@ -100,7 +100,7 @@ class Admin_Settings {
 	public function handle_refresh_action(): void {
 		$cap = is_multisite() ? 'manage_network_options' : 'manage_options';
 		if ( ! current_user_can( $cap ) ) {
-			wp_die( esc_html__( 'You do not have permission to perform this action.', 'superdav-ai-translations' ) );
+			wp_die( esc_html__( 'You do not have permission to perform this action.', 'superdav-ai-plugin-translations' ) );
 		}
 		check_admin_referer( 'gratis_ai_pt_refresh' );
 
@@ -119,8 +119,8 @@ class Admin_Settings {
 		}
 
 		$redirect = is_multisite()
-			? network_admin_url( 'settings.php?page=superdav-ai-translations&refreshed=1' )
-			: admin_url( 'options-general.php?page=superdav-ai-translations&refreshed=1' );
+			? network_admin_url( 'settings.php?page=superdav-ai-plugin-translations&refreshed=1' )
+			: admin_url( 'options-general.php?page=superdav-ai-plugin-translations&refreshed=1' );
 		wp_safe_redirect( $redirect );
 		exit;
 	}
@@ -134,10 +134,10 @@ class Admin_Settings {
 	public function add_network_admin_menu(): void {
 		add_submenu_page(
 			'settings.php',
-			__( 'Superdav AI Translations', 'superdav-ai-translations' ),
-			__( 'AI Translations', 'superdav-ai-translations' ),
+			__( 'Superdav AI Plugin Translations', 'superdav-ai-plugin-translations' ),
+			__( 'AI Translations', 'superdav-ai-plugin-translations' ),
 			'manage_network_options',
-			'superdav-ai-translations',
+			'superdav-ai-plugin-translations',
 			[ $this, 'render_status_page' ]
 		);
 	}
@@ -150,10 +150,10 @@ class Admin_Settings {
 	 */
 	public function add_admin_menu(): void {
 		add_options_page(
-			__( 'Superdav AI Translations', 'superdav-ai-translations' ),
-			__( 'AI Translations', 'superdav-ai-translations' ),
+			__( 'Superdav AI Plugin Translations', 'superdav-ai-plugin-translations' ),
+			__( 'AI Translations', 'superdav-ai-plugin-translations' ),
 			'manage_options',
-			'superdav-ai-translations',
+			'superdav-ai-plugin-translations',
 			[ $this, 'render_status_page' ]
 		);
 	}
@@ -167,13 +167,13 @@ class Admin_Settings {
 	 */
 	public function add_plugin_action_links( array $links ): array {
 		$url = is_multisite()
-			? network_admin_url( 'settings.php?page=superdav-ai-translations' )
-			: admin_url( 'options-general.php?page=superdav-ai-translations' );
+			? network_admin_url( 'settings.php?page=superdav-ai-plugin-translations' )
+			: admin_url( 'options-general.php?page=superdav-ai-plugin-translations' );
 
 		$link = sprintf(
 			'<a href="%s">%s</a>',
 			esc_url( $url ),
-			esc_html__( 'Status', 'superdav-ai-translations' )
+			esc_html__( 'Status', 'superdav-ai-plugin-translations' )
 		);
 
 		array_unshift( $links, $link );
@@ -204,32 +204,32 @@ class Admin_Settings {
 					<?php wp_nonce_field( 'gratis_ai_pt_refresh' ); ?>
 					<input type="hidden" name="action" value="gratis_ai_pt_refresh">
 					<button type="submit" class="page-title-action">
-						<?php esc_html_e( 'Refresh translation status', 'superdav-ai-translations' ); ?>
+						<?php esc_html_e( 'Refresh translation status', 'superdav-ai-plugin-translations' ); ?>
 					</button>
 				</form>
 			</h1>
 
 			<?php if ( $just_refreshed ) : ?>
 				<div class="notice notice-success is-dismissible">
-					<p><?php esc_html_e( 'AI translation refresh is running in the background — reload this page in a few seconds to see the latest status.', 'superdav-ai-translations' ); ?></p>
+					<p><?php esc_html_e( 'AI translation refresh is running in the background — reload this page in a few seconds to see the latest status.', 'superdav-ai-plugin-translations' ); ?></p>
 				</div>
 			<?php endif; ?>
 
 			<p class="description" style="max-width:800px;font-size:14px;margin-bottom:20px;">
-				<?php esc_html_e( 'Your plugins are being translated automatically by AI whenever official translations are missing or incomplete. There is nothing to configure — translations are requested and downloaded in the background. Use this page to check progress.', 'superdav-ai-translations' ); ?>
+				<?php esc_html_e( 'Your plugins are being translated automatically by AI whenever official translations are missing or incomplete. There is nothing to configure — translations are requested and downloaded in the background. Use this page to check progress.', 'superdav-ai-plugin-translations' ); ?>
 			</p>
 
 			<div class="card" style="max-width:800px;margin-top:20px;padding:12px 20px;">
-				<h2 style="margin-top:0;"><?php esc_html_e( 'Service Status', 'superdav-ai-translations' ); ?></h2>
+				<h2 style="margin-top:0;"><?php esc_html_e( 'Service Status', 'superdav-ai-plugin-translations' ); ?></h2>
 				<?php if ( $api_healthy ) : ?>
 					<p style="margin:0;">
 						<span class="dashicons dashicons-yes-alt" style="color:#00a32a;vertical-align:middle;"></span>
-						<?php esc_html_e( 'Translation service is online and ready.', 'superdav-ai-translations' ); ?>
+						<?php esc_html_e( 'Translation service is online and ready.', 'superdav-ai-plugin-translations' ); ?>
 					</p>
 				<?php else : ?>
 					<p style="margin:0;">
 						<span class="dashicons dashicons-warning" style="color:#d63638;vertical-align:middle;"></span>
-						<?php esc_html_e( 'Translation service is currently unavailable. Translations will resume automatically when the service recovers.', 'superdav-ai-translations' ); ?>
+						<?php esc_html_e( 'Translation service is currently unavailable. Translations will resume automatically when the service recovers.', 'superdav-ai-plugin-translations' ); ?>
 					</p>
 					<?php if ( is_wp_error( $api_status ) ) : ?>
 						<p><code><?php echo esc_html( $api_status->get_error_message() ); ?></code></p>
@@ -238,25 +238,25 @@ class Admin_Settings {
 			</div>
 
 			<div class="card" style="max-width:800px;margin-top:20px;padding:12px 20px;">
-				<h2 style="margin-top:0;"><?php esc_html_e( 'Translation Progress', 'superdav-ai-translations' ); ?></h2>
+				<h2 style="margin-top:0;"><?php esc_html_e( 'Translation Progress', 'superdav-ai-plugin-translations' ); ?></h2>
 
 				<div style="display:flex;gap:32px;margin-bottom:20px;flex-wrap:wrap;">
 					<div style="text-align:center;">
 						<div style="font-size:28px;font-weight:600;line-height:1.1;"><?php echo esc_html( number_format_i18n( count( $local ) ) ); ?></div>
-						<div style="color:#646970;font-size:13px;margin-top:2px;"><?php esc_html_e( 'translations active', 'superdav-ai-translations' ); ?></div>
+						<div style="color:#646970;font-size:13px;margin-top:2px;"><?php esc_html_e( 'translations active', 'superdav-ai-plugin-translations' ); ?></div>
 					</div>
 					<div style="text-align:center;">
 						<div style="font-size:28px;font-weight:600;line-height:1.1;"><?php echo esc_html( number_format_i18n( (int) $stats['plugins_count'] ) ); ?></div>
-						<div style="color:#646970;font-size:13px;margin-top:2px;"><?php esc_html_e( 'plugins covered', 'superdav-ai-translations' ); ?></div>
+						<div style="color:#646970;font-size:13px;margin-top:2px;"><?php esc_html_e( 'plugins covered', 'superdav-ai-plugin-translations' ); ?></div>
 					</div>
 					<div style="text-align:center;">
 						<div style="font-size:28px;font-weight:600;line-height:1.1;"><?php echo esc_html( number_format_i18n( (int) $stats['languages_count'] ) ); ?></div>
-						<div style="color:#646970;font-size:13px;margin-top:2px;"><?php esc_html_e( 'languages', 'superdav-ai-translations' ); ?></div>
+						<div style="color:#646970;font-size:13px;margin-top:2px;"><?php esc_html_e( 'languages', 'superdav-ai-plugin-translations' ); ?></div>
 					</div>
 					<?php if ( $pending > 0 ) : ?>
 						<div style="text-align:center;">
 							<div style="font-size:28px;font-weight:600;line-height:1.1;color:#2271b1;"><?php echo esc_html( number_format_i18n( $pending ) ); ?></div>
-							<div style="color:#646970;font-size:13px;margin-top:2px;"><?php esc_html_e( 'queued', 'superdav-ai-translations' ); ?></div>
+							<div style="color:#646970;font-size:13px;margin-top:2px;"><?php esc_html_e( 'queued', 'superdav-ai-plugin-translations' ); ?></div>
 						</div>
 					<?php endif; ?>
 				</div>
@@ -272,13 +272,13 @@ class Admin_Settings {
 										'%s translation is being generated by AI and will download automatically when ready.',
 										'%s translations are being generated by AI and will download automatically when ready.',
 										$pending,
-										'superdav-ai-translations'
+										'superdav-ai-plugin-translations'
 									)
 								),
 								esc_html( number_format_i18n( $pending ) )
 							);
 							echo ' ';
-							esc_html_e( 'No action needed.', 'superdav-ai-translations' );
+							esc_html_e( 'No action needed.', 'superdav-ai-plugin-translations' );
 							?>
 						</p>
 					</div>
@@ -288,9 +288,9 @@ class Admin_Settings {
 					<table class="widefat striped" style="margin-top:4px;">
 						<thead>
 							<tr>
-								<th><?php esc_html_e( 'Plugin', 'superdav-ai-translations' ); ?></th>
-								<th><?php esc_html_e( 'Language', 'superdav-ai-translations' ); ?></th>
-								<th style="text-align:right;"><?php esc_html_e( 'Strings translated', 'superdav-ai-translations' ); ?></th>
+								<th><?php esc_html_e( 'Plugin', 'superdav-ai-plugin-translations' ); ?></th>
+								<th><?php esc_html_e( 'Language', 'superdav-ai-plugin-translations' ); ?></th>
+								<th style="text-align:right;"><?php esc_html_e( 'Strings translated', 'superdav-ai-plugin-translations' ); ?></th>
 							</tr>
 						</thead>
 						<tbody>
@@ -305,7 +305,7 @@ class Admin_Settings {
 					</table>
 				<?php elseif ( 0 === $pending ) : ?>
 					<p style="color:#646970;font-style:italic;margin:0;">
-						<?php esc_html_e( 'No AI translations downloaded yet. Click "Refresh translation status" to start.', 'superdav-ai-translations' ); ?>
+						<?php esc_html_e( 'No AI translations downloaded yet. Click "Refresh translation status" to start.', 'superdav-ai-plugin-translations' ); ?>
 					</p>
 				<?php endif; ?>
 
@@ -313,7 +313,7 @@ class Admin_Settings {
 					<?php
 					printf(
 						/* translators: 1: Human-readable time since last check (e.g. "5 minutes ago"), 2: Number of plugins scanned */
-						esc_html__( 'Last checked: %1$s — %2$s plugins scanned.', 'superdav-ai-translations' ),
+						esc_html__( 'Last checked: %1$s — %2$s plugins scanned.', 'superdav-ai-plugin-translations' ),
 						esc_html( $stats['last_check'] ),
 						esc_html( number_format_i18n( (int) $stats['plugins_checked'] ) )
 					);
@@ -322,19 +322,19 @@ class Admin_Settings {
 			</div>
 
 			<div class="card" style="max-width:800px;margin-top:20px;padding:12px 20px;">
-				<h2 style="margin-top:0;"><?php esc_html_e( 'How It Works', 'superdav-ai-translations' ); ?></h2>
+				<h2 style="margin-top:0;"><?php esc_html_e( 'How It Works', 'superdav-ai-plugin-translations' ); ?></h2>
 				<ol>
-					<li><?php esc_html_e( 'When WordPress checks for plugin updates, this plugin checks whether translations are needed.', 'superdav-ai-translations' ); ?></li>
-					<li><?php esc_html_e( 'For any plugin without complete official translations, AI-generated translations are requested automatically.', 'superdav-ai-translations' ); ?></li>
-					<li><?php esc_html_e( 'Translations are generated using advanced language models and delivered as standard WordPress language packs.', 'superdav-ai-translations' ); ?></li>
-					<li><?php esc_html_e( 'Once downloaded, translations update automatically whenever a new plugin version is released.', 'superdav-ai-translations' ); ?></li>
-					<li><?php esc_html_e( 'If official translations from WordPress.org become available, they automatically take precedence.', 'superdav-ai-translations' ); ?></li>
+					<li><?php esc_html_e( 'When WordPress checks for plugin updates, this plugin checks whether translations are needed.', 'superdav-ai-plugin-translations' ); ?></li>
+					<li><?php esc_html_e( 'For any plugin without complete official translations, AI-generated translations are requested automatically.', 'superdav-ai-plugin-translations' ); ?></li>
+					<li><?php esc_html_e( 'Translations are generated using advanced language models and delivered as standard WordPress language packs.', 'superdav-ai-plugin-translations' ); ?></li>
+					<li><?php esc_html_e( 'Once downloaded, translations update automatically whenever a new plugin version is released.', 'superdav-ai-plugin-translations' ); ?></li>
+					<li><?php esc_html_e( 'If official translations from WordPress.org become available, they automatically take precedence.', 'superdav-ai-plugin-translations' ); ?></li>
 				</ol>
 			</div>
 
 			<div class="card" style="max-width:800px;margin-top:20px;padding:12px 20px;">
-				<h2 style="margin-top:0;"><?php esc_html_e( 'Privacy Notice', 'superdav-ai-translations' ); ?></h2>
-				<p style="margin:0;"><?php esc_html_e( 'This plugin sends the following data to the translation server: plugin metadata (name, version, textdomain), the site URL, and the WordPress version. No personal data or site content is transmitted. Translations are cached on your server.', 'superdav-ai-translations' ); ?></p>
+				<h2 style="margin-top:0;"><?php esc_html_e( 'Privacy Notice', 'superdav-ai-plugin-translations' ); ?></h2>
+				<p style="margin:0;"><?php esc_html_e( 'This plugin sends the following data to the translation server: plugin metadata (name, version, textdomain), the site URL, and the WordPress version. No personal data or site content is transmitted. Translations are cached on your server.', 'superdav-ai-plugin-translations' ); ?></p>
 			</div>
 		</div>
 		<?php
@@ -374,8 +374,8 @@ class Admin_Settings {
 			'pending_count'      => (int) get_site_option( 'gratis_ai_pt_pending_count', 0 ),
 			'available_count'    => (int) get_site_option( 'gratis_ai_pt_available_count', 0 ),
 			'last_check'         => $last_check_raw
-				? human_time_diff( (int) strtotime( (string) $last_check_raw ), time() ) . ' ' . __( 'ago', 'superdav-ai-translations' )
-				: __( 'Never', 'superdav-ai-translations' ),
+				? human_time_diff( (int) strtotime( (string) $last_check_raw ), time() ) . ' ' . __( 'ago', 'superdav-ai-plugin-translations' )
+				: __( 'Never', 'superdav-ai-plugin-translations' ),
 		];
 	}
 
@@ -495,10 +495,10 @@ class Admin_Settings {
 					esc_html(
 						/* translators: %s: Number of pending translations. */
 						_n(
-							'Superdav AI Translations: %s translation is being generated and will be available shortly.',
-							'Superdav AI Translations: %s translations are being generated and will be available shortly.',
+							'Superdav AI Plugin Translations: %s translation is being generated and will be available shortly.',
+							'Superdav AI Plugin Translations: %s translations are being generated and will be available shortly.',
 							$pending_count,
-							'superdav-ai-translations'
+							'superdav-ai-plugin-translations'
 						)
 					),
 					esc_html( number_format_i18n( $pending_count ) )
