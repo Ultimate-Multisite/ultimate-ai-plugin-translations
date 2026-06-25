@@ -1,6 +1,6 @@
 <?php
 /**
- * WP-CLI Commands for Superdav AI Translations
+ * WP-CLI Commands for Superdav AI Plugin Translations
  *
  * @package GratisAIPluginTranslations
  */
@@ -43,8 +43,8 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp superdav-ai-translations status
-     *     wp superdav-ai-translations status --verbose
+     *     wp superdav-ai-plugin-translations status
+     *     wp superdav-ai-plugin-translations status --verbose
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -91,8 +91,8 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp superdav-ai-translations check woocommerce
-     *     wp superdav-ai-translations check woocommerce --locale=es_ES
+     *     wp superdav-ai-plugin-translations check woocommerce
+     *     wp superdav-ai-plugin-translations check woocommerce --locale=es_ES
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -170,8 +170,8 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp superdav-ai-translations request woocommerce
-     *     wp superdav-ai-translations request woocommerce --locale=de_DE
+     *     wp superdav-ai-plugin-translations request woocommerce
+     *     wp superdav-ai-plugin-translations request woocommerce --locale=de_DE
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -228,8 +228,8 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp superdav-ai-translations list
-     *     wp superdav-ai-translations list --format=json
+     *     wp superdav-ai-plugin-translations list
+     *     wp superdav-ai-plugin-translations list --format=json
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -279,7 +279,7 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp superdav-ai-translations clear-cache
+     *     wp superdav-ai-plugin-translations clear-cache
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.
@@ -309,7 +309,7 @@ class CLI {
      *
      * ## EXAMPLES
      *
-     *     wp superdav-ai-translations status-plugin woocommerce de_DE
+     *     wp superdav-ai-plugin-translations status-plugin woocommerce de_DE
      *
      * @param array $args       Positional arguments.
      * @param array $assoc_args Associative arguments.

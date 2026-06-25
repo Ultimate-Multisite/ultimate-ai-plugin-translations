@@ -1,4 +1,4 @@
-# Superdav AI Translations
+# Superdav AI Plugin Translations
 
 [![Download Plugin Now](https://img.shields.io/github/v/release/Ultimate-Multisite/ultimate-ai-plugin-translations?style=for-the-badge&label=Download+Plugin+Now&color=0073aa)](https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations/releases/latest/download/ultimate-ai-plugin-translations.zip) &nbsp; Upload the zip to WordPress like any other plugin
 
@@ -12,7 +12,7 @@ The official WordPress translation platform (translate.wordpress.org) relies on 
 - Plugins with incomplete translations
 - Plugins that haven't been fully translated by volunteers
 
-**Superdav AI Translations** bridges this gap by providing AI-powered translations that are:
+**Superdav AI Plugin Translations** bridges this gap by providing AI-powered translations that are:
 
 - Automatically downloaded when needed
 - Generated on-demand using advanced language models
@@ -83,25 +83,25 @@ The plugin provides several WP-CLI commands for management:
 
 ```bash
 # Check API status
-wp superdav-ai-translations status
+wp superdav-ai-plugin-translations status
 
 # Check translations for a specific plugin
-wp superdav-ai-translations check woocommerce
+wp superdav-ai-plugin-translations check woocommerce
 
 # Request translation for specific locale
-wp superdav-ai-translations check woocommerce --locale=es_ES
+wp superdav-ai-plugin-translations check woocommerce --locale=es_ES
 
 # Request translation generation
-wp superdav-ai-translations request woocommerce --locale=de_DE
+wp superdav-ai-plugin-translations request woocommerce --locale=de_DE
 
 # List all AI translations
-wp superdav-ai-translations list
+wp superdav-ai-plugin-translations list
 
 # Clear translation cache
-wp superdav-ai-translations clear-cache
+wp superdav-ai-plugin-translations clear-cache
 
 # Get translation status
-wp superdav-ai-translations status-plugin woocommerce de_DE
+wp superdav-ai-plugin-translations status-plugin woocommerce de_DE
 ```
 
 ## Architecture
@@ -146,8 +146,8 @@ The translation server (`translate.ultimatemultisite.com`) uses:
 ### File Structure
 
 ```
-superdav-ai-translations/
-├── superdav-ai-translations.php       # Main plugin file
+superdav-ai-plugin-translations/
+├── superdav-ai-plugin-translations.php # Main plugin file
 ├── src/
 │   ├── class-translation-manager.php  # Core translation logic
 │   ├── class-translation-api-client.php  # API communication
@@ -177,7 +177,7 @@ superdav-ai-translations/
 
 Clear the translation cache:
 ```bash
-wp superdav-ai-translations clear-cache
+wp superdav-ai-plugin-translations clear-cache
 ```
 
 Or delete transients manually:
