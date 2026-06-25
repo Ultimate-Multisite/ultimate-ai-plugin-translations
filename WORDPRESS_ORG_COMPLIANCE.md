@@ -1,6 +1,6 @@
 # WordPress.org Compliance Audit Report
 
-**Plugin**: Superdav AI Plugin Translations
+**Plugin**: Superdav AI Language Packs
 **Date**: March 20, 2026  
 **Status**: ⚠️ NEEDS REVIEW - Minor issues to address
 
@@ -95,7 +95,7 @@ The plugin is well-structured and follows most WordPress coding standards. There
 
 ### 3. Plugin File Naming Convention ⚠️
 - **Status**: REVIEW
-- **Issue**: Main file is `superdav-ai-plugin-translations.php` (matches folder name) ✓
+- **Issue**: Main file is `superdav-ai-language-packs.php` (matches folder name) ✓
 - **Note**: This is correct - file name matches folder and slug
 
 ### 4. License Declaration ⚠️

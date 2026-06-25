@@ -1,9 +1,9 @@
-# Testing Guide for Superdav AI Plugin Translations
+# Testing Guide for Superdav AI Language Packs
 
 ## PHP Syntax Tests ✅ PASSED
 
 All PHP files pass syntax validation:
-- `superdav-ai-plugin-translations.php` ✅
+- `superdav-ai-language-packs.php` ✅
 - `src/class-translation-api-client.php` ✅
 - `src/class-translation-manager.php` ✅
 - `src/class-admin-settings.php` ✅
@@ -16,7 +16,7 @@ All PHP files pass syntax validation:
 ```bash
 # Test autoloader
 php -r "
-require 'superdav-ai-plugin-translations.php';
+require 'superdav-ai-language-packs.php';
 \$client = GratisAIPluginTranslations\Translation_API_Client::instance();
 echo 'Autoloader: OK\n';
 "
@@ -82,9 +82,9 @@ curl -X GET https://translate.ultimatemultisite.com/wp-json/gratis-ai-translatio
 - [ ] Settings link appears on plugins page
 - [ ] Status shows on Updates page (when translations needed)
 - [ ] WP-CLI commands work:
-  - `wp superdav-ai-plugin-translations status`
-  - `wp superdav-ai-plugin-translations check <plugin>`
-  - `wp superdav-ai-plugin-translations list`
+  - `wp superdav-ai-language-packs status`
+  - `wp superdav-ai-language-packs check <plugin>`
+  - `wp superdav-ai-language-packs list`
 
 ### Server Plugin
 - [ ] Plugin activates without errors
@@ -188,7 +188,7 @@ Before each release, verify:
  */
 
 // Test 1: Plugin loads
-require_once 'superdav-ai-plugin-translations.php';
+require_once 'superdav-ai-language-packs.php';
 assert(defined('GRATIS_AI_PT_VERSION'), 'Version constant not defined');
 
 // Test 2: Classes load

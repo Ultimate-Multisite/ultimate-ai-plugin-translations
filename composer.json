@@ -1,6 +1,6 @@
 {
     "name": "ultimate-multisite/ultimate-ai-plugin-translations",
-    "description": "Automatically provides AI-generated translations for WordPress plugins when official translations are missing or incomplete.",
+    "description": "AI-generated language packs for installed WordPress extensions when official translations are missing or incomplete.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "authors": [

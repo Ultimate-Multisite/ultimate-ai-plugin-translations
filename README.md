@@ -1,8 +1,8 @@
-# Superdav AI Plugin Translations
+# Superdav AI Language Packs
 
 [![Download Plugin Now](https://img.shields.io/github/v/release/Ultimate-Multisite/ultimate-ai-plugin-translations?style=for-the-badge&label=Download+Plugin+Now&color=0073aa)](https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations/releases/latest/download/ultimate-ai-plugin-translations.zip) &nbsp; Upload the zip to WordPress like any other plugin
 
-A WordPress plugin that automatically provides AI-generated translations for WordPress plugins when official translations from translate.wordpress.org are missing or incomplete.
+AI-generated language packs for installed WordPress extensions when official translations are missing or incomplete.
 
 ## Overview
 
@@ -12,7 +12,7 @@ The official WordPress translation platform (translate.wordpress.org) relies on 
 - Plugins with incomplete translations
 - Plugins that haven't been fully translated by volunteers
 
-**Superdav AI Plugin Translations** bridges this gap by providing AI-powered translations that are:
+**Superdav AI Language Packs** bridges this gap by providing AI-powered language packs that are:
 
 - Automatically downloaded when needed
 - Generated on-demand using advanced language models
@@ -21,7 +21,7 @@ The official WordPress translation platform (translate.wordpress.org) relies on 
 
 ## How It Works
 
-1. **Automatic Detection**: When WordPress checks for plugin updates, the plugin detects which plugins need translations
+1. **Automatic Detection**: When WordPress checks for updates, the tool detects which installed extensions need language packs
 2. **Smart Filtering**: Only requests AI translations for:
    - Languages with no official translation
    - Incomplete official translations (when enabled)
@@ -83,25 +83,25 @@ The plugin provides several WP-CLI commands for management:
 
 ```bash
 # Check API status
-wp superdav-ai-plugin-translations status
+wp superdav-ai-language-packs status
 
 # Check translations for a specific plugin
-wp superdav-ai-plugin-translations check woocommerce
+wp superdav-ai-language-packs check woocommerce
 
 # Request translation for specific locale
-wp superdav-ai-plugin-translations check woocommerce --locale=es_ES
+wp superdav-ai-language-packs check woocommerce --locale=es_ES
 
 # Request translation generation
-wp superdav-ai-plugin-translations request woocommerce --locale=de_DE
+wp superdav-ai-language-packs request woocommerce --locale=de_DE
 
 # List all AI translations
-wp superdav-ai-plugin-translations list
+wp superdav-ai-language-packs list
 
 # Clear translation cache
-wp superdav-ai-plugin-translations clear-cache
+wp superdav-ai-language-packs clear-cache
 
 # Get translation status
-wp superdav-ai-plugin-translations status-plugin woocommerce de_DE
+wp superdav-ai-language-packs status-plugin woocommerce de_DE
 ```
 
 ## Architecture
@@ -146,8 +146,8 @@ The translation server (`translate.ultimatemultisite.com`) uses:
 ### File Structure
 
 ```
-superdav-ai-plugin-translations/
-├── superdav-ai-plugin-translations.php # Main plugin file
+superdav-ai-language-packs/
+├── superdav-ai-language-packs.php       # Main plugin file
 ├── src/
 │   ├── class-translation-manager.php  # Core translation logic
 │   ├── class-translation-api-client.php  # API communication
@@ -177,7 +177,7 @@ superdav-ai-plugin-translations/
 
 Clear the translation cache:
 ```bash
-wp superdav-ai-plugin-translations clear-cache
+wp superdav-ai-language-packs clear-cache
 ```
 
 Or delete transients manually:
