@@ -32,6 +32,21 @@
         "issues": "https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations/issues",
         "source": "https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations"
     },
+    "archive": {
+        "name": "superdav-ai-plugin-translations",
+        "exclude": [
+            "/.*",
+            "/*",
+            "!/LICENSE",
+            "!/readme.txt",
+            "!/src/",
+            "!/src/**",
+            "!/superdav-ai-plugin-translations.php"
+        ]
+    },
+    "scripts": {
+        "build": "@php scripts/build-release.php"
+    },
     "require-dev": {
         "szepeviktor/phpstan-wordpress": "^2.0",
         "phpstan/extension-installer": "^1.1"

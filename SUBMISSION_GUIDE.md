@@ -107,18 +107,17 @@ curl -O https://www.gnu.org/licenses/gpl-2.0.txt
 mv gpl-2.0.txt LICENSE
 ```
 
-### 3. Zip the Plugin
+### 3. Build the Plugin ZIP
 
 ```bash
-rm -rf build/superdav-ai-plugin-translations build/superdav-ai-plugin-translations.zip
-mkdir -p build/superdav-ai-plugin-translations
-cp superdav-ai-plugin-translations.php readme.txt LICENSE build/superdav-ai-plugin-translations/
-cp -R src build/superdav-ai-plugin-translations/src
-(cd build && zip -r superdav-ai-plugin-translations.zip superdav-ai-plugin-translations)
+composer build
 ```
 
-Do not include development files such as `.gitignore`, `AGENTS.md`, `TODO.md`,
-`phpstan.neon.dist`, `wp-cli.yml`, or test/submission Markdown guides in the
+This creates `build/superdav-ai-plugin-translations.zip` with all files nested
+under the `superdav-ai-plugin-translations/` plugin slug folder. The Composer
+archive allow-list includes only the runtime plugin files, omitting development
+files such as `.gitignore`, `AGENTS.md`, `TODO.md`, `phpstan.neon.dist`,
+`wp-cli.yml`, build scripts, and test/submission Markdown guides from the
 WordPress.org ZIP/SVN import.
 
 ### 4. Submit to WordPress.org
