@@ -3,7 +3,7 @@
  * Admin Settings class
  *
  * Renders a read-only status page for the plugin. All behaviour is
- * configured via filters (see README / SERVER-API.md) — this page
+ * configured via filters (see README.md) — this page
  * never writes options.
  *
  * @package GratisAIPluginTranslations

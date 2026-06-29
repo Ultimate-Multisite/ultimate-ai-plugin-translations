@@ -18,14 +18,12 @@ ultimate-ai-plugin-translations/
 ├── superdav-ai-plugin-translations.php # Plugin entry point (namespaced)
 ├── src/
 │   ├── class-translation-manager.php  # Core translation logic
+│   ├── class-translation-api-client.php # API client
 │   ├── class-admin-settings.php       # Network admin settings page
 │   └── class-cli.php                  # WP-CLI commands
 ├── composer.json                      # PSR-4 autoload config only
+├── README.md                          # Main project documentation
 ├── readme.txt                         # WordPress.org plugin readme
-├── SERVER-API.md                      # API documentation
-├── TESTING_GUIDE.md                   # Testing instructions
-├── SUBMISSION_GUIDE.md                # WordPress.org submission guide
-├── WORDPRESS_ORG_COMPLIANCE.md        # Compliance notes
 └── LICENSE                            # GPL-2.0-or-later
 ```
 
