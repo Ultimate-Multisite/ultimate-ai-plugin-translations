@@ -117,7 +117,7 @@ This creates `build/superdav-ai-plugin-translations.zip` with all files nested
 under the `superdav-ai-plugin-translations/` plugin slug folder. The Composer
 archive allow-list includes only the runtime plugin files, omitting development
 files such as `.gitignore`, `AGENTS.md`, `TODO.md`, `phpstan.neon.dist`,
-`wp-cli.yml`, build scripts, and test/submission Markdown guides from the
+`wp-cli.yml`, Composer metadata, and test/submission Markdown guides from the
 WordPress.org ZIP/SVN import.
 
 ### 4. Submit to WordPress.org

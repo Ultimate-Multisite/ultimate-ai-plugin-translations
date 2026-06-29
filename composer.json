@@ -1,5 +1,5 @@
 {
-    "name": "ultimate-multisite/ultimate-ai-plugin-translations",
+    "name": "ultimate-multisite/superdav-ai-plugin-translations",
     "description": "Automatically provides AI-generated translations for WordPress plugins when official translations are missing or incomplete.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
@@ -19,7 +19,8 @@
         "preferred-install": "dist",
         "sort-packages": true,
         "allow-plugins": {
-            "phpstan/extension-installer": true
+            "phpstan/extension-installer": true,
+            "pondermatic/composer-archive-project": true
         }
     },
     "autoload": {
@@ -45,10 +46,11 @@
         ]
     },
     "scripts": {
-        "build": "@php scripts/build-release.php"
+        "build": "@composer archive-project --format=zip --dir=build --file=superdav-ai-plugin-translations"
     },
     "require-dev": {
-        "szepeviktor/phpstan-wordpress": "^2.0",
-        "phpstan/extension-installer": "^1.1"
+        "phpstan/extension-installer": "^1.1",
+        "pondermatic/composer-archive-project": "^1.1",
+        "szepeviktor/phpstan-wordpress": "^2.0"
     }
 }
