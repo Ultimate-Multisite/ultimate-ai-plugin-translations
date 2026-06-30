@@ -1,5 +1,5 @@
 {
-    "name": "ultimate-multisite/superdav-ai-plugin-translations",
+    "name": "ultimate-multisite/superdav-ai-language-packs",
     "description": "Automatically provides AI-generated translations for WordPress plugins when official translations are missing or incomplete.",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
@@ -28,13 +28,13 @@
             "src"
         ]
     },
-    "homepage": "https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations",
+    "homepage": "https://github.com/Ultimate-Multisite/superdav-ai-language-packs",
     "support": {
-        "issues": "https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations/issues",
-        "source": "https://github.com/Ultimate-Multisite/ultimate-ai-plugin-translations"
+        "issues": "https://github.com/Ultimate-Multisite/superdav-ai-language-packs/issues",
+        "source": "https://github.com/Ultimate-Multisite/superdav-ai-language-packs"
     },
     "archive": {
-        "name": "superdav-ai-plugin-translations",
+        "name": "superdav-ai-language-packs",
         "exclude": [
             "/.*",
             "/*",
@@ -42,11 +42,11 @@
             "!/readme.txt",
             "!/src/",
             "!/src/**",
-            "!/superdav-ai-plugin-translations.php"
+            "!/superdav-ai-language-packs.php"
         ]
     },
     "scripts": {
-        "build": "@composer archive-project --format=zip --dir=./ --file=superdav-ai-plugin-translations"
+        "build": "@composer archive-project --format=zip --dir=./ --file=superdav-ai-language-packs"
     },
     "require-dev": {
         "phpstan/extension-installer": "^1.1",

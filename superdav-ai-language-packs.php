@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: Superdav AI Plugin Translations
- * Plugin URI: https://translate.ultimatemultisite.com
+ * Plugin Name: Superdav AI Language Packs
+ * Plugin URI: https://github.com/Ultimate-Multisite/superdav-ai-language-packs
  * Description: Automatically provides AI-generated translations for WordPress plugins when official translations are missing or incomplete from translate.wordpress.org.
  * Version: 1.0.0
  * Requires at least: 5.8
@@ -10,7 +10,7 @@
  * Author URI: https://ultimatemultisite.com
  * License: GPL-2.0-or-later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain: superdav-ai-plugin-translations
+ * Text Domain: superdav-ai-language-packs
  * Network: true
  *
  * @package GratisAIPluginTranslations

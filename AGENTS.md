@@ -33,7 +33,7 @@ ultimate-ai-plugin-translations/
 - **Namespace**: `GratisAIPluginTranslations\`
 - **Autoloading**: Custom `spl_autoload_register` (maps class names to `src/class-{name}.php`)
 - **File naming**: `class-{name}.php` in `src/` (WordPress convention with PSR-4 namespace)
-- **Text domain**: `superdav-ai-plugin-translations`
+- **Text domain**: `superdav-ai-language-packs`
 - **Network plugin**: `Network: true`
 - **Constants prefix**: `SD_AI_LANG_PACKS_`
 - **Uses `declare(strict_types=1)`**
@@ -46,7 +46,6 @@ ultimate-ai-plugin-translations/
 - Network-level options via `get_site_option()` / `add_site_option()`
 - Default API base: `https://translate.ultimatemultisite.com/wp-json/gratis-ai-translations/v1`
 - Transient-based caching for API responses
-- WP-CLI commands under `wp superdav-ai-plugin-translations`
 
 ## Important Notes
 
