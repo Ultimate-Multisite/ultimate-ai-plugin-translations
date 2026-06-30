@@ -11,6 +11,8 @@ declare(strict_types=1);
 
 namespace GratisAIPluginTranslations;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Translation API Client class.
  *
@@ -24,7 +26,7 @@ class Translation_API_Client {
      * @since 1.0.0
      * @var string
      */
-    private const CACHE_KEYS_OPTION = 'gratis_ai_pt_cache_keys';
+    private const CACHE_KEYS_OPTION = 'sd_ai_lang_packs_cache_keys';
 
     /**
      * API base URL.
@@ -40,15 +42,8 @@ class Translation_API_Client {
      * @since 1.0.0
      * @var int
      */
-    private int $timeout;
+    private int $timeout = 30;
 
-    /**
-     * Cache duration in seconds.
-     *
-     * @since 1.0.0
-     * @var int
-     */
-    private int $cache_duration;
 
     /**
      * Constructor.
@@ -60,17 +55,9 @@ class Translation_API_Client {
          * Filter the translation API base URL.
          *
          * @since 1.0.0
-         * @param string $api_base Default from GRATIS_AI_PT_API_BASE constant.
+         * @param string $api_base Default from SD_AI_LANG_PACKS_API_BASE constant.
          */
-        $this->api_base = (string) apply_filters('gratis_ai_pt_api_base', GRATIS_AI_PT_API_BASE);
-        $this->timeout = 30;
-        /**
-         * Filter the cache duration (seconds) for API responses.
-         *
-         * @since 1.0.0
-         * @param int $seconds Default 1 hour.
-         */
-        $this->cache_duration = (int) apply_filters('gratis_ai_pt_cache_duration', HOUR_IN_SECONDS);
+        $this->api_base = (string) apply_filters('sd_ai_lang_packs_api_base', SD_AI_LANG_PACKS_API_BASE);
     }
 
     /**
@@ -151,7 +138,7 @@ class Translation_API_Client {
      * @return array|WP_Error    Translation status or WP_Error.
      */
     public function get_translation_status(string $textdomain, string $version, string $locale) {
-        $cache_key = 'gratis_ai_pt_status_' . md5($textdomain . $version . $locale);
+        $cache_key = 'sd_ai_lang_packs_status_' . md5($textdomain . $version . $locale);
         $cached = get_site_transient($cache_key);
 
         if (false !== $cached) {
@@ -224,7 +211,7 @@ class Translation_API_Client {
      * @return array|WP_Error API status information or WP_Error.
      */
     public function check_api_status() {
-        $cache_key = 'gratis_ai_pt_api_status';
+        $cache_key = 'sd_ai_lang_packs_api_status';
         $cached = get_site_transient($cache_key);
 
         if (false !== $cached) {
@@ -279,14 +266,14 @@ class Translation_API_Client {
      * @return void
      */
     public function clear_cache(): void {
-        delete_site_transient('gratis_ai_pt_api_status');
-        delete_site_transient('gratis_ai_pt_translations_cache');
-        delete_site_transient('gratis_ai_pt_pending_count');
+        delete_site_transient('sd_ai_lang_packs_api_status');
+        delete_site_transient('sd_ai_lang_packs_translations_cache');
+        delete_site_transient('sd_ai_lang_packs_pending_count');
 
         $cache_keys = get_site_option(self::CACHE_KEYS_OPTION, []);
         if (is_array($cache_keys)) {
             foreach ($cache_keys as $cache_key) {
-                if (is_string($cache_key) && 0 === strpos($cache_key, 'gratis_ai_pt_')) {
+                if (is_string($cache_key) && 0 === strpos($cache_key, 'sd_ai_lang_packs_')) {
                     delete_site_transient($cache_key);
                 }
             }

@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace GratisAIPluginTranslations;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Admin Settings class.
  *
@@ -21,41 +23,21 @@ namespace GratisAIPluginTranslations;
 class Admin_Settings {
 
 	/**
-	 * Instance of this class.
-	 *
-	 * @since 1.0.0
-	 * @var self|null
-	 */
-	private static ?self $instance = null;
-
-	/**
 	 * API client instance.
 	 *
 	 * @since 1.0.0
-	 * @var Translation_API_Client|null
+	 * @var Translation_API_Client
 	 */
-	private ?Translation_API_Client $api_client = null;
-
-	/**
-	 * Get the singleton instance.
-	 *
-	 * @since 1.0.0
-	 * @return self
-	 */
-	public static function instance(): self {
-		if ( null === self::$instance ) {
-			self::$instance = new self();
-		}
-		return self::$instance;
-	}
+	private Translation_API_Client $api_client;
 
 	/**
 	 * Constructor.
 	 *
 	 * @since 1.0.0
+	 * @param Translation_API_Client $api_client API client instance.
 	 */
-	private function __construct() {
-		$this->api_client = new Translation_API_Client();
+	public function __construct( Translation_API_Client $api_client ) {
+		$this->api_client = $api_client;
 	}
 
 	/**
@@ -72,11 +54,11 @@ class Admin_Settings {
 		}
 
 		add_filter(
-			'network_admin_plugin_action_links_' . GRATIS_AI_PT_BASENAME,
+			'network_admin_plugin_action_links_' . SD_AI_LANG_PACKS_BASENAME,
 			[ $this, 'add_plugin_action_links' ]
 		);
 		add_filter(
-			'plugin_action_links_' . GRATIS_AI_PT_BASENAME,
+			'plugin_action_links_' . SD_AI_LANG_PACKS_BASENAME,
 			[ $this, 'add_plugin_action_links' ]
 		);
 
@@ -84,7 +66,7 @@ class Admin_Settings {
 		add_action( 'network_admin_notices', [ $this, 'display_admin_notices' ] );
 
 		// "Refresh translation status" action handler.
-		add_action( 'admin_post_gratis_ai_pt_refresh', [ $this, 'handle_refresh_action' ] );
+		add_action( 'admin_post_sd_ai_lang_packs_refresh', [ $this, 'handle_refresh_action' ] );
 	}
 
 	/**
@@ -102,15 +84,15 @@ class Admin_Settings {
 		if ( ! current_user_can( $cap ) ) {
 			wp_die( esc_html__( 'You do not have permission to perform this action.', 'superdav-ai-plugin-translations' ) );
 		}
-		check_admin_referer( 'gratis_ai_pt_refresh' );
+		check_admin_referer( 'sd_ai_lang_packs_refresh' );
 
 		// Clear the cached AI translation results so the next refresh
 		// recomputes fully against current WordPress translation data.
-		delete_site_transient( 'gratis_ai_pt_translations_cache' );
+		delete_site_transient( 'sd_ai_lang_packs_translations_cache' );
 
 		// Schedule the async AI refresh (replace any existing).
-		wp_clear_scheduled_hook( 'gratis_ai_pt_refresh_cache' );
-		wp_schedule_single_event( time() + 1, 'gratis_ai_pt_refresh_cache' );
+		wp_clear_scheduled_hook( 'sd_ai_lang_packs_refresh_cache' );
+		wp_schedule_single_event( time() + 1, 'sd_ai_lang_packs_refresh_cache' );
 
 		// Nudge WP Cron so the event runs in the background instead of
 		// waiting for the next page load. Non-blocking.
@@ -201,8 +183,8 @@ class Admin_Settings {
 			<h1>
 				<?php echo esc_html( get_admin_page_title() ); ?>
 				<form method="post" action="<?php echo esc_url( $action_url ); ?>" style="display:inline-block;margin-left:12px;">
-					<?php wp_nonce_field( 'gratis_ai_pt_refresh' ); ?>
-					<input type="hidden" name="action" value="gratis_ai_pt_refresh">
+					<?php wp_nonce_field( 'sd_ai_lang_packs_refresh' ); ?>
+					<input type="hidden" name="action" value="sd_ai_lang_packs_refresh">
 					<button type="submit" class="page-title-action">
 						<?php esc_html_e( 'Refresh translation status', 'superdav-ai-plugin-translations' ); ?>
 					</button>
@@ -353,26 +335,24 @@ class Admin_Settings {
 		$languages     = [];
 
 		if ( is_dir( $languages_dir ) ) {
-			$files = glob( $languages_dir . '/*-gratis-ai.mo' ) ?: [];
-			$total = count( $files );
+			$details = $this->get_local_translation_details();
+			$total   = count( $details );
 
-			foreach ( $files as $file ) {
-				if ( preg_match( '/(.+)-([a-z]{2,3}(?:_[A-Z]{2})?)-gratis-ai\.mo$/', basename( $file ), $matches ) ) {
-					$plugins[]   = $matches[1];
-					$languages[] = $matches[2];
-				}
+			foreach ( $details as $detail ) {
+				$plugins[]   = $detail['textdomain'];
+				$languages[] = $detail['locale'];
 			}
 		}
 
-		$last_check_raw = get_site_option( 'gratis_ai_pt_last_check', null );
+		$last_check_raw = get_site_option( 'sd_ai_lang_packs_last_check', null );
 
 		return [
 			'total_translations' => $total,
 			'plugins_count'      => count( array_unique( $plugins ) ),
 			'languages_count'    => count( array_unique( $languages ) ),
-			'plugins_checked'    => (int) get_site_option( 'gratis_ai_pt_plugins_checked', 0 ),
-			'pending_count'      => (int) get_site_option( 'gratis_ai_pt_pending_count', 0 ),
-			'available_count'    => (int) get_site_option( 'gratis_ai_pt_available_count', 0 ),
+			'plugins_checked'    => (int) get_site_option( 'sd_ai_lang_packs_plugins_checked', 0 ),
+			'pending_count'      => (int) get_site_option( 'sd_ai_lang_packs_pending_count', 0 ),
+			'available_count'    => (int) get_site_option( 'sd_ai_lang_packs_available_count', 0 ),
 			'last_check'         => $last_check_raw
 				? human_time_diff( (int) strtotime( (string) $last_check_raw ), time() ) . ' ' . __( 'ago', 'superdav-ai-plugin-translations' )
 				: __( 'Never', 'superdav-ai-plugin-translations' ),
@@ -397,14 +377,46 @@ class Admin_Settings {
 			return $details;
 		}
 
-		$files = glob( $languages_dir . '/*-gratis-ai.mo' ) ?: [];
+		$seen = [];
+		foreach ( $this->get_installed_ai_translation_entries() as $entry ) {
+			$textdomain = (string) ( $entry['textdomain'] ?? $entry['slug'] ?? '' );
+			$locale     = (string) ( $entry['language'] ?? '' );
 
-		foreach ( $files as $file ) {
-			$basename = basename( $file, '-gratis-ai.mo' );
-			// Filename pattern: {textdomain}-{locale}, e.g. woocommerce-de_DE
-			if ( ! preg_match( '/^(.+)-([a-z]{2,3}(?:_[A-Z]{2,3})?)$/', $basename, $matches ) ) {
+			if ( '' === $textdomain || '' === $locale ) {
 				continue;
 			}
+
+			$file = $this->find_translation_file( $textdomain, $locale, (string) ( $entry['slug'] ?? '' ) );
+			if ( null === $file ) {
+				continue;
+			}
+
+			$key = $textdomain . '|' . $locale;
+			if ( isset( $seen[ $key ] ) ) {
+				continue;
+			}
+			$seen[ $key ] = true;
+
+			$details[] = [
+				'textdomain' => $textdomain,
+				'locale'     => $locale,
+				'strings'    => $this->count_mo_strings( $file ),
+			];
+		}
+
+		// Back-compat only: show any old suffixed files from earlier builds.
+		$legacy_files = glob( $languages_dir . '/*-gratis-ai.mo' ) ?: [];
+		foreach ( $legacy_files as $file ) {
+			if ( ! preg_match( '/^(.+)-([a-z]{2,3}(?:_[A-Z]{2,3})?)-gratis-ai\.mo$/', basename( $file ), $matches ) ) {
+				continue;
+			}
+
+			$key = $matches[1] . '|' . $matches[2];
+			if ( isset( $seen[ $key ] ) ) {
+				continue;
+			}
+			$seen[ $key ] = true;
+
 			$details[] = [
 				'textdomain' => $matches[1],
 				'locale'     => $matches[2],
@@ -421,6 +433,57 @@ class Admin_Settings {
 		);
 
 		return $details;
+	}
+
+	/**
+	 * Get AI translation entries recorded by the refresh/install process.
+	 *
+	 * @since 1.0.0
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function get_installed_ai_translation_entries(): array {
+		$entries = get_site_option( 'sd_ai_lang_packs_installed_translations', [] );
+
+		if ( empty( $entries ) ) {
+			$entries = get_site_transient( 'sd_ai_lang_packs_translations_cache' );
+		}
+
+		return is_array( $entries ) ? array_values( $entries ) : [];
+	}
+
+	/**
+	 * Find the installed .mo file for an AI translation entry.
+	 *
+	 * Current packages are normal WordPress language packs, named
+	 * {textdomain}-{locale}.mo. The slug fallback handles older cached entries
+	 * that did not store textdomain separately, and the -gratis-ai candidate is
+	 * retained only for legacy files.
+	 *
+	 * @since 1.0.0
+	 * @param string $textdomain Plugin textdomain.
+	 * @param string $locale     Locale code.
+	 * @param string $slug       Plugin slug fallback.
+	 * @return string|null Absolute .mo path, or null if no file exists.
+	 */
+	private function find_translation_file( string $textdomain, string $locale, string $slug = '' ): ?string {
+		$languages_dir = WP_CONTENT_DIR . '/languages/plugins';
+		$candidates    = [
+			$languages_dir . '/' . $textdomain . '-' . $locale . '.mo',
+		];
+
+		if ( '' !== $slug && $slug !== $textdomain ) {
+			$candidates[] = $languages_dir . '/' . $slug . '-' . $locale . '.mo';
+		}
+
+		$candidates[] = $languages_dir . '/' . $textdomain . '-' . $locale . '-gratis-ai.mo';
+
+		foreach ( $candidates as $candidate ) {
+			if ( is_readable( $candidate ) ) {
+				return $candidate;
+			}
+		}
+
+		return null;
 	}
 
 	/**
@@ -483,7 +546,7 @@ class Admin_Settings {
 			return;
 		}
 
-		$pending_count = (int) get_site_option( 'gratis_ai_pt_pending_count', 0 );
+		$pending_count = (int) get_site_option( 'sd_ai_lang_packs_pending_count', 0 );
 		if ( $pending_count <= 0 ) {
 			return;
 		}

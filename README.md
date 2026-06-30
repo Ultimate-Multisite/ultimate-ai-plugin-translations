@@ -34,7 +34,7 @@ The official WordPress translation platform (translate.wordpress.org) relies on 
 ### Requirements
 
 - WordPress 5.8 or higher
-- PHP 8.0 or higher
+- PHP 7.4 or higher
 - Multisite supported (network-activated)
 
 ### Install via ZIP
@@ -74,7 +74,7 @@ You can define these in your `wp-config.php`:
 
 ```php
 // Custom API endpoint (if running your own server)
-define('GRATIS_AI_PT_API_BASE', 'https://your-server.com/wp-json/gratis-ai-translations/v1');
+define('SD_AI_LANG_PACKS_API_BASE', 'https://your-server.com/wp-json/gratis-ai-translations/v1');
 ```
 
 ## WP-CLI Commands
@@ -116,7 +116,7 @@ wp superdav-ai-plugin-translations status-plugin woocommerce de_DE
 ### Hooks Used
 
 - `translations_api`: Filter translation API results
-- `gratis_ai_pt_refresh_cache`: Refresh and install AI translation packages asynchronously
+- `sd_ai_lang_packs_refresh_cache`: Refresh and install AI translation packages asynchronously
 - `http_request_host_is_external`: Allow downloads from the configured translation server host
 
 ### Translation Priority
@@ -159,7 +159,7 @@ superdav-ai-plugin-translations/
 
 ### Coding Standards
 
-- PHP 8.0+ with strict typing
+- PHP 7.4+ with strict typing
 - PSR-2 coding standards
 - WordPress coding standards for hooks/filters
 - Namespaced classes with autoloading
@@ -182,7 +182,7 @@ wp superdav-ai-plugin-translations clear-cache
 
 Or delete transients manually:
 ```sql
-DELETE FROM wp_sitemeta WHERE meta_key LIKE '%gratis_ai_pt_%';
+DELETE FROM wp_sitemeta WHERE meta_key LIKE '%sd_ai_lang_packs_%';
 ```
 
 ## License

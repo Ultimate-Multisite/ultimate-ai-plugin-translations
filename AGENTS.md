@@ -29,13 +29,13 @@ ultimate-ai-plugin-translations/
 
 ## Code Style & Conventions
 
-- **PHP version**: >= 8.0
+- **PHP version**: >= 7.4
 - **Namespace**: `GratisAIPluginTranslations\`
 - **Autoloading**: Custom `spl_autoload_register` (maps class names to `src/class-{name}.php`)
 - **File naming**: `class-{name}.php` in `src/` (WordPress convention with PSR-4 namespace)
 - **Text domain**: `superdav-ai-plugin-translations`
 - **Network plugin**: `Network: true`
-- **Constants prefix**: `GRATIS_AI_PT_`
+- **Constants prefix**: `SD_AI_LANG_PACKS_`
 - **Uses `declare(strict_types=1)`**
 - **No PHPCS config** — follow WordPress Coding Standards
 
@@ -52,7 +52,7 @@ ultimate-ai-plugin-translations/
 
 - This is the **client** plugin — see `ultimate-ai-translation-server` for the server component
 - Designed for WordPress.org compliance — no external dependencies bundled
-- API key and base URL configurable via constants (`GRATIS_AI_PT_API_BASE`)
+- API key and base URL configurable via constants (`SD_AI_LANG_PACKS_API_BASE`)
 
 ## Local Development Environment
 

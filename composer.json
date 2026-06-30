@@ -10,11 +10,11 @@
         }
     ],
     "require": {
-        "php": ">=8.0"
+        "php": ">=7.4"
     },
     "config": {
         "platform": {
-            "php": "8.2.0"
+            "php": "7.4.0"
         },
         "preferred-install": "dist",
         "sort-packages": true,

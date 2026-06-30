@@ -3,7 +3,7 @@ Contributors: ultimatemultisite
 Tags: translation, ai, machine-translation, i18n, localization
 Requires at least: 5.8
 Tested up to: 7.0
-Requires PHP: 8.0
+Requires PHP: 7.4
 Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -58,7 +58,7 @@ Translations are cached locally on your server. No data is stored on external se
 = Requirements =
 
 * WordPress 5.8 or higher
-* PHP 8.0 or higher
+* PHP 7.4 or higher
 * Multisite supported (network-activated)
 
 = From WordPress.org =

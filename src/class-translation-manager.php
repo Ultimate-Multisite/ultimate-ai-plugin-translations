@@ -12,6 +12,11 @@ declare(strict_types=1);
 
 namespace GratisAIPluginTranslations;
 
+defined( 'ABSPATH' ) || exit;
+
+use WP_Error;
+use WP_Upgrader;
+
 /**
  * Translation Manager class.
  *
@@ -20,49 +25,21 @@ namespace GratisAIPluginTranslations;
 class Translation_Manager {
 
     /**
-     * Instance of this class.
-     *
-     * @since 1.0.0
-     * @var self|null
-     */
-    private static ?self $instance = null;
-
-    /**
-     * Cache of translation status for plugins.
-     *
-     * @since 1.0.0
-     * @var array<string, array>
-     */
-    private array $translation_status_cache = [];
-
-    /**
      * API client instance.
      *
      * @since 1.0.0
-     * @var Translation_API_Client|null
+     * @var Translation_API_Client
      */
-    private ?Translation_API_Client $api_client = null;
-
-    /**
-     * Get the singleton instance.
-     *
-     * @since 1.0.0
-     * @return self
-     */
-    public static function instance(): self {
-        if (null === self::$instance) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
+    private Translation_API_Client $api_client;
 
     /**
      * Constructor.
      *
      * @since 1.0.0
+     * @param Translation_API_Client $api_client API client instance.
      */
-    private function __construct() {
-        $this->api_client = new Translation_API_Client();
+    public function __construct(Translation_API_Client $api_client) {
+        $this->api_client = $api_client;
     }
 
     /**
@@ -86,20 +63,20 @@ class Translation_Manager {
         // Cron handler for the async cache refresh (scheduled by activate() and
         // on cache-miss). Must be registered before any wp_schedule_single_event()
         // call for this hook so the event always has a handler.
-        add_action('gratis_ai_pt_refresh_cache', [$this, 'refresh_translations_cache']);
+        add_action('sd_ai_lang_packs_refresh_cache', [$this, 'refresh_translations_cache']);
 
         // Schedule cleanup of old translation files.
-        add_action('gratis_ai_pt_cleanup_old_translations', [$this, 'cleanup_old_translations']);
+        add_action('sd_ai_lang_packs_cleanup_old_translations', [$this, 'cleanup_old_translations']);
 
-        if (!wp_next_scheduled('gratis_ai_pt_cleanup_old_translations')) {
-            wp_schedule_event(time(), 'weekly', 'gratis_ai_pt_cleanup_old_translations');
+        if (!wp_next_scheduled('sd_ai_lang_packs_cleanup_old_translations')) {
+            wp_schedule_event(time(), 'weekly', 'sd_ai_lang_packs_cleanup_old_translations');
         }
 
         // User-locale hook: when a user saves their profile with a different
         // language, schedule an async translation request for that locale.
         add_action('profile_update', [$this, 'schedule_translation_request_for_user']);
         add_action('user_register', [$this, 'schedule_translation_request_for_user']);
-        add_action('gratis_ai_pt_request_user_locale', [$this, 'maybe_request_translations_for_user']);
+        add_action('sd_ai_lang_packs_request_user_locale', [$this, 'maybe_request_translations_for_user']);
     }
 
     /**
@@ -124,7 +101,7 @@ class Translation_Manager {
         sort($plugins);
 
         // Resume from prior chunk state, or start fresh.
-        $state = get_site_option('gratis_ai_pt_refresh_state', null);
+        $state = get_site_option('sd_ai_lang_packs_refresh_state', null);
         $is_resume = is_array($state)
             && isset($state['plugins'], $state['offset'])
             && $state['plugins'] === $plugins;
@@ -149,7 +126,7 @@ class Translation_Manager {
          * @since 1.2.0
          * @param int $chunk_size Default 25.
          */
-        $chunk_size = (int) apply_filters('gratis_ai_pt_refresh_chunk_size', 25);
+        $chunk_size = (int) apply_filters('sd_ai_lang_packs_refresh_chunk_size', 25);
         $chunk_size = max(1, min(100, $chunk_size));
 
         $slice = array_slice($plugins, $state['offset'], $chunk_size);
@@ -167,8 +144,8 @@ class Translation_Manager {
         }
 
         // More work to do — persist state and reschedule the next chunk.
-        update_site_option('gratis_ai_pt_refresh_state', $state);
-        wp_schedule_single_event(time() + 1, 'gratis_ai_pt_refresh_cache');
+        update_site_option('sd_ai_lang_packs_refresh_state', $state);
+        wp_schedule_single_event(time() + 1, 'sd_ai_lang_packs_refresh_cache');
     }
 
     /**
@@ -262,12 +239,13 @@ class Translation_Manager {
                 $state['entries'][] = [
                     'type'       => 'plugin',
                     'slug'       => $slug_map[$textdomain],
+                    'textdomain' => $textdomain,
                     'language'   => $locale,
                     'version'    => $version_map[$textdomain],
                     'updated'    => $entry['updated'] ?? current_time('mysql'),
                     'package'    => $entry['package_url'],
                     'autoupdate' => true,
-                    'source'     => 'gratis-ai',
+                    'source'     => 'sd-ai-lang-pack',
                 ];
             }
         }
@@ -296,6 +274,10 @@ class Translation_Manager {
             $this->install_translation_packages($entries);
         }
 
+        if (0 === $pending || !empty($entries)) {
+            update_site_option('sd_ai_lang_packs_installed_translations', is_array($entries) ? $entries : []);
+        }
+
         // Only cache the translation list when there are no server-side pending
         // items. If the server queued work, leave the existing cache intact so
         // plugins with package_url from a previous run remain visible.
@@ -306,17 +288,17 @@ class Translation_Manager {
              * @since 1.2.0
              * @param int $seconds Default 1 hour.
              */
-            $cache_duration = (int) apply_filters('gratis_ai_pt_cache_duration', HOUR_IN_SECONDS);
-            set_site_transient('gratis_ai_pt_translations_cache', $entries, $cache_duration);
+            $cache_duration = (int) apply_filters('sd_ai_lang_packs_cache_duration', HOUR_IN_SECONDS);
+            set_site_transient('sd_ai_lang_packs_translations_cache', $entries, $cache_duration);
         }
 
-        update_site_option('gratis_ai_pt_last_check', current_time('mysql'));
-        update_site_option('gratis_ai_pt_plugins_checked', $checked);
-        update_site_option('gratis_ai_pt_pending_count', $pending);
-        update_site_option('gratis_ai_pt_available_count', count($entries));
-        set_site_transient('gratis_ai_pt_pending_count', $pending, DAY_IN_SECONDS);
+        update_site_option('sd_ai_lang_packs_last_check', current_time('mysql'));
+        update_site_option('sd_ai_lang_packs_plugins_checked', $checked);
+        update_site_option('sd_ai_lang_packs_pending_count', $pending);
+        update_site_option('sd_ai_lang_packs_available_count', count($entries));
+        set_site_transient('sd_ai_lang_packs_pending_count', $pending, DAY_IN_SECONDS);
 
-        delete_site_option('gratis_ai_pt_refresh_state');
+        delete_site_option('sd_ai_lang_packs_refresh_state');
     }
 
     /**
@@ -372,7 +354,7 @@ class Translation_Manager {
      * @return bool True when the package URL host matches the API host.
      */
     private function is_trusted_package_url(string $package_url): bool {
-        $api_base       = (string) apply_filters('gratis_ai_pt_api_base', GRATIS_AI_PT_API_BASE);
+        $api_base       = (string) apply_filters('sd_ai_lang_packs_api_base', SD_AI_LANG_PACKS_API_BASE);
         $package_scheme = wp_parse_url($package_url, PHP_URL_SCHEME);
         $package_host   = wp_parse_url($package_url, PHP_URL_HOST);
         $api_scheme     = wp_parse_url($api_base, PHP_URL_SCHEME);
@@ -408,10 +390,10 @@ class Translation_Manager {
         // Never make sync API calls on this hook — it fires during admin
         // requests and would block. If the cache is empty, schedule a
         // refresh and return whatever we have.
-        $cached = get_site_transient('gratis_ai_pt_translations_cache');
+        $cached = get_site_transient('sd_ai_lang_packs_translations_cache');
         if (false === $cached) {
-            if (!wp_next_scheduled('gratis_ai_pt_refresh_cache')) {
-                wp_schedule_single_event(time() + 5, 'gratis_ai_pt_refresh_cache');
+            if (!wp_next_scheduled('sd_ai_lang_packs_refresh_cache')) {
+                wp_schedule_single_event(time() + 5, 'sd_ai_lang_packs_refresh_cache');
             }
             return $result;
         }
@@ -432,36 +414,6 @@ class Translation_Manager {
         }
 
         return $result;
-    }
-
-    /**
-     * Maybe download AI translation package.
-     *
-     * @since 1.0.0
-     * @param bool        $reply    Whether to bail without returning the package.
-     * @param string      $package  The package file name.
-     * @param WP_Upgrader $upgrader The WP_Upgrader instance.
-     * @param array       $hook_extra Extra arguments passed to hooked filters.
-     * @return bool|string|WP_Error False or WP_Error on failure, path to local file on success.
-     */
-    public function maybe_download_ai_translation($reply, string $package, $upgrader, $hook_extra) {
-        // Check if this is an AI translation package.
-        if (strpos($package, GRATIS_AI_PT_API_BASE) !== 0) {
-            return $reply;
-        }
-
-        if (!is_a($upgrader, 'Language_Pack_Upgrader')) {
-            return $reply;
-        }
-
-        // Download the translation package.
-        $download_file = download_url($package);
-
-        if (is_wp_error($download_file)) {
-            return $download_file;
-        }
-
-        return $download_file;
     }
 
     /**
@@ -557,7 +509,7 @@ class Translation_Manager {
          * @since 1.0.0
          * @param bool $fill_incomplete Default true.
          */
-        $fill_incomplete = (bool) apply_filters('gratis_ai_pt_fill_incomplete', true);
+        $fill_incomplete = (bool) apply_filters('sd_ai_lang_packs_fill_incomplete', true);
 
         foreach ($needed_locales as $locale) {
             // Check if we have official translations from wordpress.org.
@@ -818,7 +770,7 @@ class Translation_Manager {
             return true;
         }
 
-        $server_host = wp_parse_url( GRATIS_AI_PT_API_BASE, PHP_URL_HOST );
+        $server_host = wp_parse_url( SD_AI_LANG_PACKS_API_BASE, PHP_URL_HOST );
         if ( $host === $server_host ) {
             return true;
         }
@@ -842,7 +794,7 @@ class Translation_Manager {
          * @since 1.0.0
          * @param bool $enabled Default true.
          */
-        return (bool) apply_filters('gratis_ai_pt_enabled', true);
+        return (bool) apply_filters('sd_ai_lang_packs_enabled', true);
     }
 
     /**
@@ -863,8 +815,8 @@ class Translation_Manager {
         if (empty($locale) || in_array($locale, ['en_US', 'en', 'site-default'], true)) {
             return;
         }
-        if (!wp_next_scheduled('gratis_ai_pt_request_user_locale', [$user_id])) {
-            wp_schedule_single_event(time() + 5, 'gratis_ai_pt_request_user_locale', [$user_id]);
+        if (!wp_next_scheduled('sd_ai_lang_packs_request_user_locale', [$user_id])) {
+            wp_schedule_single_event(time() + 5, 'sd_ai_lang_packs_request_user_locale', [$user_id]);
         }
     }
 
@@ -890,7 +842,7 @@ class Translation_Manager {
         }
 
         // De-dupe: only fire once per locale per day.
-        $marker = 'gratis_ai_pt_user_locale_' . md5($locale);
+        $marker = 'sd_ai_lang_packs_user_locale_' . md5($locale);
         if (get_site_transient($marker)) {
             return;
         }
@@ -940,7 +892,10 @@ class Translation_Manager {
             return;
         }
 
-        // Find all AI translation files (marked with -gratis-ai suffix).
+        // Clean up only legacy AI translation files that used the old
+        // non-standard -gratis-ai suffix. Current language packs use normal
+        // WordPress filenames ({textdomain}-{locale}.mo), so deleting by age
+        // would risk removing active or official translations.
         $files = glob($languages_dir . '/*-gratis-ai.mo');
 
         foreach ($files as $file) {
