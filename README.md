@@ -53,28 +53,33 @@ composer require ultimate-multisite/superdav-ai-plugin-translations
 ### For Multisite
 
 1. Network activate the plugin from **My Sites > Network Admin > Plugins**
-2. Configure settings at **My Sites > Network Admin > Settings > AI Translations**
+2. View translation status at **My Sites > Network Admin > Settings > AI Translations**
 
-## Configuration
+## Status and Configuration
 
-### Settings
+### Status Page
 
 Navigate to **Settings > AI Translations** (single site) or **Network Admin > Settings > AI Translations** (multisite).
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| **Enable AI Translations** | Toggle automatic translation downloads | Enabled |
-| **Fill Incomplete Translations** | Provide AI translations for missing strings in partial translations | Enabled |
-| **API Base URL** | The translation server endpoint | `https://translate.ultimatemultisite.com/wp-json/gratis-ai-translations/v1` |
-| **Cache Duration** | How long to cache translation checks | 1 hour |
+The page is read-only. It reports service health, background scan activity, detected non-English locales, queued translation jobs, and installed AI language packs. It does not include a manual refresh button or write plugin options.
 
-### Constants
+### Code Configuration
+
+The plugin runs automatically. Site owners can adjust behaviour from `wp-config.php`, a small must-use plugin, or another trusted plugin:
+
+| Constant / Filter | Description | Default |
+|-------------------|-------------|---------|
+| `SD_AI_LANG_PACKS_API_BASE` | Custom translation server endpoint | `https://translate.ultimatemultisite.com/wp-json/sd-ai-lang-pack/v1` |
+| `sd_ai_lang_packs_enabled` | Enable or disable automatic translation checks | `true` |
+| `sd_ai_lang_packs_fill_incomplete` | Request AI translations for missing strings in incomplete official translations | `true` |
+| `sd_ai_lang_packs_cache_duration` | Cache duration for completed translation result sets | `HOUR_IN_SECONDS` |
+| `sd_ai_lang_packs_refresh_chunk_size` | Number of plugins processed per background cron chunk | `25` |
 
 You can define these in your `wp-config.php`:
 
 ```php
 // Custom API endpoint (if running your own server)
-define('SD_AI_LANG_PACKS_API_BASE', 'https://your-server.com/wp-json/gratis-ai-translations/v1');
+define('SD_AI_LANG_PACKS_API_BASE', 'https://your-server.com/wp-json/sd-ai-lang-pack/v1');
 ```
 
 ## WP-CLI Commands
@@ -110,7 +115,7 @@ wp superdav-ai-plugin-translations status-plugin woocommerce de_DE
 
 - **Translation_Manager**: Hooks into WordPress update system, manages translation lifecycle
 - **Translation_API_Client**: Communicates with the translation server
-- **Admin_Settings**: Settings page and configuration UI
+- **Admin_Settings**: Read-only admin status page
 - **CLI**: WP-CLI command handlers
 
 ### Hooks Used

@@ -77,7 +77,7 @@ Translations are cached locally on your server. No data is stored on external se
 = For Multisite =
 
 1. Network activate the plugin from **My Sites > Network Admin > Plugins**
-2. Configure settings at **My Sites > Network Admin > Settings > AI Translations**
+2. View translation status at **My Sites > Network Admin > Settings > AI Translations**
 
 == Frequently Asked Questions ==
 
@@ -107,8 +107,8 @@ The plugin is free. The translation service is currently offered at no cost whil
 
 == Screenshots ==
 
-1. Settings page showing API status and statistics
-2. Translation queue showing pending translations
+1. Status page showing service health, background activity, detected locales, and translation statistics
+2. Translation table showing installed AI language packs and queued translations
 
 == Changelog ==
 
@@ -118,7 +118,7 @@ The plugin is free. The translation service is currently offered at no cost whil
 * New: Detect WordPress.org vs premium plugins; source is included in batch requests to the server
 * New: Chunked, batched translation refresh to handle large plugin lists without timeouts
 * New: Rich admin status page with per-plugin and per-locale translation counts
-* New: "Check for updates now" button that forces a fresh WordPress update check before triggering an AI refresh
+* New: Background activity reporting for chunked translation refreshes
 * New: Default auto_approve=false — AI translations wait for server-side approval before downloading
 * New: Allow downloads from translation server on private-IP/local networks (development environments)
 * New: Full multisite support with network-admin settings page
